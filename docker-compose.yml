@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  # ============================================================
+  # Nginx 反代 + 静态个站
+  # ============================================================
+  nginx:
+    build: ./nginx
+    container_name: portfolio-nginx
+    ports:
+      - "${PORT:-8080}:80"
+    volumes:
+      # 静态个站 — 本地修改即时生效
+      - ./site:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    networks:
+      - portfolio-net
+
+  # ============================================================
+  # 未来项目示例：取消注释并创建对应目录即可
+  # ============================================================
+  #
+  # game:
+  #   build: ./projects/game
+  #   container_name: portfolio-game
+  #   expose:
+  #     - "3000"
+  #   restart: unless-stopped
+  #   networks:
+  #     - portfolio-net
+  #
+  # ai-tools:
+  #   build: ./projects/ai-tools
+  #   container_name: portfolio-ai-tools
+  #   expose:
+  #     - "3000"
+  #   restart: unless-stopped
+  #   networks:
+  #     - portfolio-net
+
+networks:
+  portfolio-net:
+    driver: bridge

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PORTFOLIO · Explorer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span class="nav-logo">λ</span>
+      <span class="nav-name">Explorer</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#projects">Projects</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="nav-terminal">
+      <span class="terminal-prompt">$</span>
+      <span class="terminal-cursor">▊</span>
+    </div>
+  </nav>
+
+  <section id="home" class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span> AVAILABLE FOR COLLABORATION
+      </div>
+      <h1 class="hero-title">
+        <span class="title-line">你好, 我是</span>
+        <span class="title-name typing-text" id="typing-target"></span>
+      </h1>
+      <p class="hero-subtitle">
+        在代码与设计之间探索无限可能。<br>
+        <span class="highlight">全栈开发者</span> · <span class="highlight">开源爱好者</span> · <span class="highlight">数字创作者</span>
+      </p>
+      <div class="hero-actions">
+        <a href="#projects" class="btn btn-primary">
+          <span class="btn-icon">🚀</span> 探索我的作品
+        </a>
+        <a href="#contact" class="btn btn-outline">
+          <span class="btn-icon">📬</span> 联系我
+        </a>
+      </div>
+      <div class="scroll-indicator">
+        <span>SCROLL</span>
+        <div class="scroll-line"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="section">
+    <div class="section-header">
+      <h2 class="section-title">
+        <span class="section-number">01.</span> 关于我
+      </h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="about-grid">
+      <div class="about-card glass-card">
+        <div class="card-icon">🧠</div>
+        <h3>技术驱动</h3>
+        <p>热衷于用优雅的代码解决复杂问题。相信技术应该服务于人，而不是相反。</p>
+      </div>
+      <div class="about-card glass-card">
+        <div class="card-icon">🎨</div>
+        <h3>美学执念</h3>
+        <p>像素级别的追求。从 UI 细节到代码结构，每一处都值得精心打磨。</p>
+      </div>
+      <div class="about-card glass-card">
+        <div class="card-icon">🌌</div>
+        <h3>持续探索</h3>
+        <p>对新技术保持好奇心。AI、Web3、Creative Coding — 边界之外总有惊喜。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="skills" class="section section-alt">
+    <div class="section-header">
+      <h2 class="section-title">
+        <span class="section-number">02.</span> 技能栈
+      </h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="skills-grid">
+      <div class="skill-category">
+        <h3>🔧 前端</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">React</span><span class="skill-tag">Vue</span><span class="skill-tag">TypeScript</span>
+          <span class="skill-tag">Tailwind</span><span class="skill-tag">Three.js</span><span class="skill-tag">Next.js</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h3>⚙️ 后端</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Node.js</span><span class="skill-tag">Python</span><span class="skill-tag">Go</span>
+          <span class="skill-tag">Rust</span><span class="skill-tag">PostgreSQL</span><span class="skill-tag">Redis</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h3>🚀 DevOps</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Docker</span><span class="skill-tag">K8s</span><span class="skill-tag">Nginx</span>
+          <span class="skill-tag">CI/CD</span><span class="skill-tag">Linux</span><span class="skill-tag">AWS</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h3>🤖 AI / ML</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">LLM</span><span class="skill-tag">RAG</span><span class="skill-tag">LangChain</span>
+          <span class="skill-tag">PyTorch</span><span class="skill-tag">Agents</span><span class="skill-tag">Fine-tuning</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="projects" class="section">
+    <div class="section-header">
+      <h2 class="section-title">
+        <span class="section-number">03.</span> 作品集
+      </h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="projects-grid">
+      <a href="/projects/game/" class="project-card glass-card project-link">
+        <div class="project-thumb">
+          <div class="project-thumb-placeholder">🎮</div>
+          <div class="project-thumb-overlay"><span>PLAY →</span></div>
+        </div>
+        <div class="project-info">
+          <h4>像素小游戏</h4>
+          <p>一个用 Canvas 手写的复古像素游戏</p>
+          <div class="project-tech"><span>HTML5 Canvas</span><span>JavaScript</span></div>
+        </div>
+      </a>
+      <div class="project-card glass-card project-soon">
+        <div class="project-thumb">
+          <div class="project-thumb-placeholder">🔮</div>
+          <div class="project-soon-badge">即将上线</div>
+        </div>
+        <div class="project-info">
+          <h4>AI 工具集</h4>
+          <p>基于 LLM 的实用工具集合</p>
+          <div class="project-tech"><span>React</span><span>Python</span><span>AI</span></div>
+        </div>
+      </div>
+      <div class="project-card glass-card project-soon">
+        <div class="project-thumb">
+          <div class="project-thumb-placeholder">🎵</div>
+          <div class="project-soon-badge">即将上线</div>
+        </div>
+        <div class="project-info">
+          <h4>音乐可视化</h4>
+          <p>Web Audio API × Three.js 实时音画互动</p>
+          <div class="project-tech"><span>Three.js</span><span>Web Audio</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="section section-alt">
+    <div class="section-header">
+      <h2 class="section-title">
+        <span class="section-number">04.</span> 联系我
+      </h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="contact-content">
+      <p class="contact-text">
+        如果你对我的作品感兴趣，或者有有趣的项目想一起合作 — <br>
+        <span class="highlight">随时联系我。</span>
+      </p>
+      <div class="contact-links">
+        <a href="https://github.com" class="contact-link glass-card" target="_blank">
+          <span class="contact-link-icon">💻</span><span>GitHub</span>
+        </a>
+        <a href="mailto:hello@example.com" class="contact-link glass-card">
+          <span class="contact-link-icon">✉️</span><span>Email</span>
+        </a>
+        <a href="#" class="contact-link glass-card">
+          <span class="contact-link-icon">🐦</span><span>Twitter</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="nav-logo">λ</span><span>Explorer</span>
+      </div>
+      <p class="footer-text">Designed & Built with ❤️ & <span class="highlight">AI</span></p>
+      <p class="footer-copy">© 2025 Explorer. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
