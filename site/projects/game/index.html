@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>像素要塞 · Pixel Fortress</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <!-- 顶部 HUD -->
+    <div id="hud">
+      <div class="hud-item">
+        <span class="hud-icon">🌊</span>
+        <span class="hud-label">波次</span>
+        <span class="hud-value" id="wave-num">1</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-icon">❤️</span>
+        <span class="hud-label">生命</span>
+        <span class="hud-value" id="lives">20</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-icon">💰</span>
+        <span class="hud-label">金币</span>
+        <span class="hud-value" id="gold">200</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-icon">⭐</span>
+        <span class="hud-label">分数</span>
+        <span class="hud-value" id="score">0</span>
+      </div>
+    </div>
+
+    <!-- 游戏画布 -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- 波次提示覆盖层 -->
+    <div id="wave-overlay" class="hidden">
+      <div id="wave-overlay-text"></div>
+    </div>
+
+    <!-- 底部控制栏 -->
+    <div id="action-bar">
+      <button class="tower-btn" data-tower="arrow" data-cost="50">
+        <span class="tower-icon">🔸</span>
+        <span class="tower-name">箭塔</span>
+        <span class="tower-cost">50💰</span>
+      </button>
+      <button class="tower-btn" data-tower="cannon" data-cost="100">
+        <span class="tower-icon">💣</span>
+        <span class="tower-name">炮塔</span>
+        <span class="tower-cost">100💰</span>
+      </button>
+      <button class="tower-btn" data-tower="ice" data-cost="75">
+        <span class="tower-icon">❄️</span>
+        <span class="tower-name">冰塔</span>
+        <span class="tower-cost">75💰</span>
+      </button>
+      <button class="tower-btn" data-tower="tesla" data-cost="125">
+        <span class="tower-icon">⚡</span>
+        <span class="tower-name">电塔</span>
+        <span class="tower-cost">125💰</span>
+      </button>
+      <button id="btn-sell" class="action-btn hidden">
+        <span>🗑️</span> 出售
+      </button>
+      <button id="btn-upgrade" class="action-btn hidden">
+        <span>⬆️</span> 升级
+      </button>
+      <button id="btn-start-wave" class="action-btn primary">
+        <span>▶️</span> 开始
+      </button>
+    </div>
+
+    <!-- 选中塔信息面板 -->
+    <div id="tower-info" class="hidden">
+      <div id="tower-info-name"></div>
+      <div id="tower-info-stats"></div>
+    </div>
+
+    <!-- Game Over 弹窗 -->
+    <div id="game-over" class="hidden">
+      <div class="game-over-content">
+        <h2>💀 要塞沦陷</h2>
+        <div id="game-over-stats"></div>
+        <button id="btn-restart">🔄 再来一局</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/constants.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/enemy.js"></script>
+  <script src="js/tower.js"></script>
+  <script src="js/projectile.js"></script>
+  <script src="js/wave.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
