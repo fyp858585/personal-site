@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>♾️ 我爱谢小坡 · Love in the Cosmos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700;900&family=JetBrains+Mono:wght@300;400;600&family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #070018;
+      --nebula-1: #1a0a3e;
+      --nebula-2: #0f0530;
+      --cyan: #00f5ff;
+      --magenta: #ff2d95;
+      --gold: #ffd700;
+      --white: #f0f0ff;
+      --pink-glow: rgba(255, 45, 149, 0.6);
+      --cyan-glow: rgba(0, 245, 255, 0.5);
+      --card-bg: rgba(15, 5, 50, 0.6);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background: var(--bg-deep);
+      font-family: 'Noto Serif SC', serif;
+      color: var(--white);
+      overflow-x: hidden;
+      cursor: default;
+    }
+
+    /* ── Canvas Layers ── */
+    canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+    #canvas-stars { z-index: 0; }
+    #canvas-heart { z-index: 1; }
+    #canvas-audio { z-index: 1; }
+
+    /* ── Content ── */
+    .page { position: relative; z-index: 2; }
+
+    /* ── Floating nav ── */
+    .top-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 32px;
+      background: linear-gradient(180deg, rgba(7,0,24,0.9) 40%, transparent 100%);
+    }
+    .top-nav .back-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      display: flex; align-items: center; gap: 8px;
+      transition: color 0.3s, text-shadow 0.3s;
+    }
+    .top-nav .back-link:hover {
+      color: #fff;
+      text-shadow: 0 0 20px var(--cyan-glow);
+    }
+    .top-nav .nav-brand {
+      color: var(--magenta);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 13px;
+      letter-spacing: 3px;
+      opacity: 0.7;
+    }
+
+    /* ── Hero Section ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 120px 24px 60px;
+      position: relative;
+    }
+    .hero-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px; letter-spacing: 6px;
+      color: var(--cyan);
+      margin-bottom: 24px;
+      opacity: 0; animation: fadeSlideUp 1s ease 0.3s forwards;
+    }
+    .hero-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(48px, 10vw, 120px);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--magenta) 0%, #ff6b9d 30%, var(--cyan) 55%, #a78bfa 75%, var(--gold) 100%);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 4s ease-in-out infinite, fadeSlideUp 1s ease 0.5s forwards;
+      opacity: 0;
+      line-height: 1.2;
+      filter: drop-shadow(0 0 40px rgba(255,45,149,0.3));
+      margin-bottom: 8px;
+    }
+    .hero-heart {
+      font-size: clamp(32px, 6vw, 64px);
+      opacity: 0; animation: pulse 1.5s ease-in-out infinite, fadeSlideUp 1s ease 0.6s forwards;
+      margin-bottom: 4px;
+    }
+    .hero-sub {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(18px, 3vw, 28px);
+      font-weight: 500;
+      color: var(--white);
+      opacity: 0;
+      animation: fadeSlideUp 1s ease 0.8s forwards;
+      margin-bottom: 32px;
+      text-shadow: 0 0 30px var(--pink-glow);
+    }
+    .hero-sub .highlight {
+      color: var(--magenta);
+      font-weight: 700;
+    }
+    .hero-sub .cyan-hl {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    /* Audio Viz Bars */
+    .audio-viz {
+      display: flex; gap: 4px; align-items: flex-end;
+      height: 80px; margin-bottom: 40px;
+      opacity: 0; animation: fadeSlideUp 1s ease 1s forwards;
+    }
+    .audio-viz .bar {
+      width: 6px; min-width: 6px;
+      background: linear-gradient(180deg, var(--magenta), var(--cyan));
+      border-radius: 3px;
+      animation: barDance 0.6s ease-in-out infinite alternate;
+      box-shadow: 0 0 12px var(--pink-glow);
+    }
+
+    /* ── Cards Section ── */
+    .cards-section {
+      max-width: 900px; margin: 0 auto; padding: 0 24px 80px;
+      display: grid; gap: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+    .love-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 32px 28px;
+      position: relative; overflow: hidden;
+      transition: transform 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+    .love-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), transparent);
+      opacity: 0.5;
+    }
+    .love-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 245, 255, 0.08), 0 0 40px rgba(255, 45, 149, 0.05);
+    }
+    .love-card .card-emoji {
+      font-size: 40px; margin-bottom: 16px; display: block;
+    }
+    .love-card h3 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 22px; font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--cyan), var(--magenta));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .love-card p {
+      font-size: 15px; line-height: 1.8;
+      color: rgba(240, 240, 255, 0.75);
+    }
+    .love-card .tech-tag {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; padding: 4px 10px; margin-top: 12px;
+      border-radius: 100px;
+      background: rgba(0, 245, 255, 0.1);
+      color: var(--cyan); border: 1px solid rgba(0, 245, 255, 0.2);
+    }
+
+    /* ── Giant Quote ── */
+    .quote-section {
+      text-align: center; padding: 80px 24px;
+      position: relative;
+    }
+    .quote-section .giant-quote {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(24px, 5vw, 48px);
+      font-weight: 900;
+      line-height: 1.6;
+      background: linear-gradient(180deg, #fff 0%, var(--magenta) 40%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 20px rgba(255,45,149,0.3));
+      max-width: 700px; margin: 0 auto;
+    }
+    .quote-section .quote-author {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px; color: var(--cyan);
+      margin-top: 20px; letter-spacing: 2px;
+    }
+
+    /* ── Footer ── */
+    .page-footer {
+      text-align: center; padding: 40px 24px 60px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      margin: 0 24px;
+    }
+    .page-footer .constellation {
+      font-size: 18px; letter-spacing: 8px; margin-bottom: 12px; display: block;
+    }
+    .page-footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; color: rgba(240, 240, 255, 0.4);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      25%      { background-position: 100% 0%; }
+      50%      { background-position: 100% 100%; }
+      75%      { background-position: 0% 100%; }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.15); }
+    }
+    @keyframes barDance {
+      0%   { height: 20px; }
+      100% { height: var(--h, 60px); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .top-nav { padding: 12px 16px; }
+      .cards-section { grid-template-columns: 1fr; }
+      .audio-viz { gap: 2px; height: 50px; }
+      .audio-viz .bar { width: 4px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Stars background -->
+  <canvas id="canvas-stars"></canvas>
+
+  <!-- Heart particle orbit -->
+  <canvas id="canvas-heart"></canvas>
+
+  <!-- Audio visualizer bars canvas (upper layer) -->
+  <canvas id="canvas-audio"></canvas>
+
+  <div class="page">
+
+    <!-- Top Nav -->
+    <nav class="top-nav">
+      <a href="/" class="back-link">◂ 返回主页</a>
+      <span class="nav-brand">✦ COSMIC LOVE ✦</span>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-label">✦ FOREVER AND ALWAYS ✦</div>
+      <h1 class="hero-title">我爱谢小坡</h1>
+      <div class="hero-heart">💖</div>
+      <p class="hero-sub">
+        <span class="highlight">唱歌最好听</span> 的你在发光<br>
+        像银河系里最亮的<span class="cyan-hl">恒星</span>
+      </p>
+
+      <!-- CSS Audio Vis -->
+      <div class="audio-viz" id="audioViz">
+        <div class="bar" style="--h:45px; animation-delay: 0s;"></div>
+        <div class="bar" style="--h:70px; animation-delay: 0.1s;"></div>
+        <div class="bar" style="--h:35px; animation-delay: 0.05s;"></div>
+        <div class="bar" style="--h:80px; animation-delay: 0.15s;"></div>
+        <div class="bar" style="--h:55px; animation-delay: 0.08s;"></div>
+        <div class="bar" style="--h:65px; animation-delay: 0.12s;"></div>
+        <div class="bar" style="--h:40px; animation-delay: 0.04s;"></div>
+        <div class="bar" style="--h:75px; animation-delay: 0.18s;"></div>
+        <div class="bar" style="--h:50px; animation-delay: 0.06s;"></div>
+        <div class="bar" style="--h:60px; animation-delay: 0.14s;"></div>
+        <div class="bar" style="--h:38px; animation-delay: 0.02s;"></div>
+        <div class="bar" style="--h:72px; animation-delay: 0.16s;"></div>
+        <div class="bar" style="--h:48px; animation-delay: 0.1s;"></div>
+        <div class="bar" style="--h:68px; animation-delay: 0.07s;"></div>
+        <div class="bar" style="--h:42px; animation-delay: 0.13s;"></div>
+        <div class="bar" style="--h:58px; animation-delay: 0.09s;"></div>
+      </div>
+    </section>
+
+    <!-- Love Cards -->
+    <section class="cards-section">
+      <div class="love-card">
+        <span class="card-emoji">🎤</span>
+        <h3>天籁之音</h3>
+        <p>你唱歌的时候，整个世界都安静下来倾听。每一个音符都像星辰坠落，照亮我心底最深的角落。</p>
+        <span class="tech-tag">freq_resonance=true</span>
+      </div>
+      <div class="love-card">
+        <span class="card-emoji">🌌</span>
+        <h3>宇宙级的爱</h3>
+        <p>从地球到仙女座星系，220 万光年的距离，也比不上我对你的思念之万一。</p>
+        <span class="tech-tag">love.scale = cosmic</span>
+      </div>
+      <div class="love-card">
+        <span class="card-emoji">✨</span>
+        <h3>你的光芒</h3>
+        <p>你一笑，银河都亮了三分。你的声音有魔法，能把平凡的日子变成流动的诗篇。</p>
+        <span class="tech-tag">brightness = ∞</span>
+      </div>
+      <div class="love-card">
+        <span class="card-emoji">🎵</span>
+        <h3>旋律永恒</h3>
+        <p>你的歌声是时间无法磨损的唱片。按下播放键，就是永远。</p>
+        <span class="tech-tag">loop = forever</span>
+      </div>
+      <div class="love-card">
+        <span class="card-emoji">💫</span>
+        <h3>心之所向</h3>
+        <p>在 137 亿年的宇宙历史中遇见你，是概率论里最美的奇迹。</p>
+        <span class="tech-tag">P(遇见你) ≈ 0，但发生了</span>
+      </div>
+      <div class="love-card">
+        <span class="card-emoji">🔥</span>
+        <h3>谢小坡</h3>
+        <p>这个名字，是我心脏的默认心跳节奏。是我代码里最温柔的注释。</p>
+        <span class="tech-tag">// TODO: 爱你一万年</span>
+      </div>
+    </section>
+
+    <!-- Giant Quote -->
+    <section class="quote-section">
+      <p class="giant-quote">
+        你是我的<br>
+        第一行「Hello World」<br>
+        也是最后一行的<br>
+        「return love;」
+      </p>
+      <p class="quote-author">— @fyp858585, compiled with ❤️</p>
+    </section>
+
+    <!-- Footer -->
+    <footer class="page-footer">
+      <span class="constellation">✦ ✦ ✦ ✦ ✦</span>
+      <p>Made with love · Powered by stardust · Forever 谢小坡 ❤️</p>
+    </footer>
+  </div>
+
+  <script>
+    // ══════════════════════════════════════
+    //  Layer 1: Starfield Background
+    // ══════════════════════════════════════
+    (function() {
+      const canvas = document.getElementById('canvas-stars');
+      const ctx = canvas.getContext('2d');
+      let stars = [];
+      let w, h;
+
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // Create stars
+      function initStars() {
+        stars = [];
+        const count = Math.floor((w * h) / 2500);
+        for (let i = 0; i < count; i++) {
+          stars.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            r: Math.random() * 1.8 + 0.3,
+            alpha: Math.random(),
+            dAlpha: (Math.random() - 0.5) * 0.008,
+            hue: Math.random() < 0.15 ? 325 : Math.random() < 0.25 ? 190 : 260
+          });
+        }
+      }
+      initStars();
+      window.addEventListener('resize', initStars);
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+
+        // Nebula gradients
+        const g1 = ctx.createRadialGradient(w * 0.3, h * 0.4, 0, w * 0.3, h * 0.4, w * 0.6);
+        g1.addColorStop(0, 'rgba(60, 20, 120, 0.12)');
+        g1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g1;
+        ctx.fillRect(0, 0, w, h);
+
+        const g2 = ctx.createRadialGradient(w * 0.7, h * 0.6, 0, w * 0.7, h * 0.6, w * 0.5);
+        g2.addColorStop(0, 'rgba(0, 180, 220, 0.06)');
+        g2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 0, w, h);
+
+        const g3 = ctx.createRadialGradient(w * 0.5, h * 0.3, 0, w * 0.5, h * 0.3, w * 0.7);
+        g3.addColorStop(0, 'rgba(255, 45, 149, 0.04)');
+        g3.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g3;
+        ctx.fillRect(0, 0, w, h);
+
+        // Stars
+        for (const s of stars) {
+          s.alpha += s.dAlpha;
+          if (s.alpha > 1) { s.alpha = 1; s.dAlpha *= -1; }
+          if (s.alpha < 0.1) { s.alpha = 0.1; s.dAlpha *= -1; }
+
+          const hue = s.hue;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${hue}, 80%, 80%, ${s.alpha})`;
+          ctx.fill();
+
+          // Glow
+          if (s.alpha > 0.7) {
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 90%, 70%, ${s.alpha * 0.15})`;
+            ctx.fill();
+          }
+        }
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // ══════════════════════════════════════
+    //  Layer 2: Heart Particle Orbit
+    // ══════════════════════════════════════
+    (function() {
+      const canvas = document.getElementById('canvas-heart');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      let w, h, time = 0;
+
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // Heart parametric equation
+      function heartXY(t) {
+        const x = 16 * Math.pow(Math.sin(t), 3);
+        const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+        return { x: x / 16, y: y / 16 };
+      }
+
+      // Generate orbit particles along heart curve
+      function initParticles() {
+        particles = [];
+        const count = 120;
+        for (let i = 0; i < count; i++) {
+          const t = (i / count) * Math.PI * 2;
+          particles.push({
+            t: t,
+            baseSpeed: 0.002 + Math.random() * 0.004,
+            speed: 0,
+            r: 1 + Math.random() * 2,
+            hue: Math.random() < 0.5 ? 330 : 195,
+            offsetX: (Math.random() - 0.5) * 30,
+            offsetY: (Math.random() - 0.5) * 30,
+            wander: Math.random() * Math.PI * 2
+          });
+        }
+      }
+      initParticles();
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        time += 0.016;
+
+        const cx = w / 2;
+        const cy = h * 0.42;
+        const scale = Math.min(w, h) * 0.36;
+
+        for (const p of particles) {
+          p.speed = p.baseSpeed + Math.sin(time * 2 + p.wander) * 0.001;
+          p.t += p.speed;
+          if (p.t > Math.PI * 2) p.t -= Math.PI * 2;
+
+          const hPos = heartXY(p.t);
+          const x = cx + hPos.x * scale + Math.sin(time * 3 + p.wander) * 8;
+          const y = cy + hPos.y * scale + Math.cos(time * 2.5 + p.wander) * 8;
+
+          const alpha = 0.4 + Math.sin(time * 3 + p.t * 4) * 0.3;
+
+          // Glow
+          ctx.beginPath();
+          ctx.arc(x, y, p.r * 4, 0, Math.PI * 2);
+          const glow = ctx.createRadialGradient(x, y, 0, x, y, p.r * 4);
+          glow.addColorStop(0, `hsla(${p.hue}, 100%, 70%, ${alpha * 0.4})`);
+          glow.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = glow;
+          ctx.fill();
+
+          // Core
+          ctx.beginPath();
+          ctx.arc(x, y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${p.hue}, 100%, 80%, ${alpha})`;
+          ctx.fill();
+        }
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // ══════════════════════════════════════
+    //  Layer 3: Music Note Particles (singing themed)
+    // ══════════════════════════════════════
+    (function() {
+      const canvas = document.getElementById('canvas-audio');
+      const ctx = canvas.getContext('2d');
+      let notes = [];
+      let w, h;
+
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const noteChars = ['♪', '♫', '♬', '✦', '✧', '⋆'];
+
+      function spawnNote() {
+        const ch = noteChars[Math.floor(Math.random() * noteChars.length)];
+        notes.push({
+          x: Math.random() * w,
+          y: h + 30,
+          size: 12 + Math.random() * 24,
+          speed: 0.3 + Math.random() * 1.2,
+          alpha: 0.6 + Math.random() * 0.4,
+          char: ch,
+          hue: Math.random() < 0.3 ? 195 : Math.random() < 0.5 ? 330 : 280,
+          wobble: Math.random() * Math.PI * 2,
+          wobbleSpeed: 0.01 + Math.random() * 0.02
+        });
+      }
+
+      // Keep a pool of floating notes
+      for (let i = 0; i < 25; i++) {
+        const n = {
+          x: Math.random() * w,
+          y: Math.random() * h,
+          size: 12 + Math.random() * 24,
+          speed: 0.3 + Math.random() * 0.6,
+          alpha: 0.15 + Math.random() * 0.25,
+          char: noteChars[Math.floor(Math.random() * noteChars.length)],
+          hue: Math.random() < 0.3 ? 195 : 330,
+          wobble: Math.random() * Math.PI * 2,
+          wobbleSpeed: 0.01 + Math.random() * 0.02
+        };
+        notes.push(n);
+      }
+
+      let spawnCooldown = 0;
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+
+        spawnCooldown--;
+        if (spawnCooldown <= 0) {
+          spawnNote();
+          spawnCooldown = 40 + Math.floor(Math.random() * 60);
+        }
+
+        for (let i = notes.length - 1; i >= 0; i--) {
+          const n = notes[i];
+          n.y -= n.speed;
+          n.wobble += n.wobbleSpeed;
+          const ox = Math.sin(n.wobble) * 15;
+
+          ctx.save();
+          ctx.font = `${n.size}px serif`;
+          ctx.fillStyle = `hsla(${n.hue}, 100%, 80%, ${n.alpha})`;
+          ctx.shadowColor = `hsla(${n.hue}, 100%, 70%, ${n.alpha * 0.6})`;
+          ctx.shadowBlur = 10;
+          ctx.fillText(n.char, n.x + ox, n.y);
+          ctx.restore();
+
+          if (n.y < -50) {
+            notes.splice(i, 1);
+          }
+        }
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+  </script>
+</body>
+</html>

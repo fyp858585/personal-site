@@ -558,3 +558,11 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ===== LOVE NAV LINK ===== */
+.nav-love {
+  color: var(--accent-magenta) !important;
+  font-weight: 600 !important;
+}
+.nav-love:hover { color: #fff !important; text-shadow: 0 0 20px rgba(236, 72, 153, 0.6); }
+.nav-love::after { background: var(--accent-magenta) !important; }
