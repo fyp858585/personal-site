@@ -873,6 +873,64 @@ a { color: var(--cyan); text-decoration: none; }
   transform: translateY(0);
 }
 
+/* ---- QR Modal ---- */
+.qr-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,.85);
+  backdrop-filter: blur(8px);
+  align-items: center;
+  justify-content: center;
+}
+.qr-modal.open { display: flex; }
+.qr-modal__card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  max-width: 360px;
+  width: 90%;
+  box-shadow: 0 0 60px var(--green-glow);
+}
+.qr-modal__card img {
+  width: 240px;
+  height: 240px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+.qr-modal__title {
+  font-family: var(--ff-sans);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.qr-modal__sub {
+  font-family: var(--ff-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+.qr-modal__close {
+  background: var(--green-dim);
+  border: none;
+  border-radius: 8px;
+  color: var(--bg-deep);
+  font-family: var(--ff-mono);
+  font-size: 13px;
+  padding: 8px 24px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.qr-modal__close:hover {
+  background: var(--green);
+  box-shadow: 0 0 16px var(--green-glow-strong);
+}
+
 /* ============================================================
    RESPONSIVE
    ============================================================ */
@@ -1536,12 +1594,22 @@ a { color: var(--cyan); text-decoration: none; }
         <span style="color:var(--green)">$</span> echo "Built with passion, one commit at a time"
       </div>
       <div class="footer__links">
-        <a href="mailto:yanpei.fan@centurygame.com">Email</a>
+        <a href="#" id="contactBtn">Contact Me</a>
         <a href="#hero">Back to Top</a>
       </div>
     </div>
   </div>
 </footer>
+
+<!-- ==================== QR MODAL ==================== -->
+<div class="qr-modal" id="qrModal">
+  <div class="qr-modal__card">
+    <img src="/wechat-qr.jpg" alt="WeChat QR Code">
+    <div class="qr-modal__title">Scan to Connect</div>
+    <div class="qr-modal__sub">微信扫码添加好友</div>
+    <button class="qr-modal__close" id="qrClose">Close</button>
+  </div>
+</div>
 
 <!-- ==================== JAVASCRIPT ==================== -->
 <script>
@@ -1822,6 +1890,19 @@ a { color: var(--cyan); text-decoration: none; }
   } else {
     runLoop(0);
   }
+
+  /* ---- QR Modal ---- */
+  const qrModal = document.getElementById('qrModal');
+  document.getElementById('contactBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    qrModal.classList.add('open');
+  });
+  document.getElementById('qrClose').addEventListener('click', () => {
+    qrModal.classList.remove('open');
+  });
+  qrModal.addEventListener('click', (e) => {
+    if (e.target === qrModal) qrModal.classList.remove('open');
+  });
 
 })();
 </script>
