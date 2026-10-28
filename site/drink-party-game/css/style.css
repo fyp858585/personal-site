@@ -1,0 +1,433 @@
+:root {
+  --bg1: #1a0d1f;
+  --bg2: #2d0f24;
+  --bg3: #3d0f1a;
+  --gold: #ffd23f;
+  --gold-soft: #ffb347;
+  --rose: #ff5e7e;
+  --text: #f5e8d0;
+  --text-dim: #b8a0a0;
+  --glass: rgba(255,255,255,0.08);
+  --glass-border: rgba(255,255,255,0.15);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;        /* 阻止下拉刷新等手势干扰 */
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3));
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+.hidden { display: none !important; }
+
+/* ===== 游戏触控区 ===== */
+#play-area {
+  position: fixed;
+  inset: 0;
+  touch-action: none;               /* 阻止浏览器默认滚动/缩放，交给 JS 处理 */
+  z-index: 1;
+}
+
+/* ===== 圆点 ===== */
+/* 外层 .dot 只负责定位（translate3d），内层 .dot-inner 负责样式与中奖脉冲，
+   这样定位 transform 和动画 transform 互不覆盖。 */
+.dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  transform: translate3d(var(--x, 0px), var(--y, 0px), 0) translate(-50%, -50%);
+  pointer-events: none;              /* 让触摸穿透圆点到 play-area */
+  will-change: transform;
+  transition: width 0.2s, height 0.2s;
+}
+.dot-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--color, #ff5e7e), rgba(0,0,0,0.35));
+  box-shadow: 0 0 22px var(--color, #ff5e7e), 0 0 40px var(--color, #ff5e7e);
+}
+.dot.winner {
+  width: 110px;
+  height: 110px;
+  z-index: 30;                        /* 提到顶层，确保不被结果横幅遮挡 */
+}
+.dot.winner .dot-inner {
+  border: 4px solid var(--gold);
+  box-shadow: 0 0 30px var(--gold), 0 0 60px var(--gold-soft), 0 0 22px var(--color, #ff5e7e);
+  animation: winnerPulse 0.7s ease-in-out infinite alternate;
+}
+@keyframes winnerPulse {
+  from { transform: scale(1); filter: brightness(1); }
+  to   { transform: scale(1.18); filter: brightness(1.4); }
+}
+
+/* ===== 抽签高亮环 ===== */
+.highlight-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 4px solid var(--gold);
+  box-shadow: 0 0 28px var(--gold), inset 0 0 12px var(--gold-soft);
+  transform: translate3d(var(--x, 0px), var(--y, 0px), 0) translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.1s ease-out;
+}
+
+/* ===== 顶部信息条 ===== */
+#hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
+  z-index: 10;
+  pointer-events: none;              /* 整条不挡游戏触控 */
+}
+#hud > * { pointer-events: auto; }  /* 但按钮自身可点 */
+.counter {
+  margin: 0 auto;                    /* 居中 */
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-size: 15px;
+}
+.hud-spacer { width: 56px; }
+.icon-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+/* ===== 中央提示 ===== */
+.hint {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-dim);
+  font-size: 17px;
+  z-index: 5;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 24px;
+  transition: opacity 0.3s;
+}
+.hint.fade { opacity: 0; }
+
+/* ===== 开始抽签按钮 ===== */
+.start-btn {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + 28px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  background: linear-gradient(135deg, var(--rose), var(--gold-soft));
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  border: none;
+  border-radius: 999px;
+  padding: 18px 56px;
+  box-shadow: 0 10px 32px rgba(255,94,126,0.5);
+}
+.start-btn:active {
+  transform: translateX(-50%) scale(0.96);
+}
+.start-btn.busy {
+  opacity: 0.5;
+  pointer-events: none;              /* 动画期间防误触 */
+}
+
+/* ===== 结果横幅 ===== */
+.result-banner {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 60px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  background: linear-gradient(135deg, rgba(255,210,63,0.96), rgba(255,179,71,0.96));
+  color: #1a0d1f;
+  border-radius: 16px;
+  padding: 14px 24px;
+  max-width: 88%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  animation: bannerIn 0.3s ease-out;
+}
+@keyframes bannerIn {
+  from { transform: translateX(-50%) translateY(-12px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+.result-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.result-task {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* ===== 惩罚选择面板（底部弹出 sheet） ===== */
+.task-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0,0,0,0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: pickerFadeIn 0.2s ease-out;
+}
+@keyframes pickerFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.picker-card {
+  width: 100%;
+  max-width: 560px;
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, var(--bg2), var(--bg3));
+  border-top: 1px solid var(--glass-border);
+  border-radius: 22px 22px 0 0;
+  padding: 18px 16px calc(env(safe-area-inset-bottom) + 18px);
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+  animation: pickerUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes pickerUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.picker-title {
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--gold);
+}
+.picker-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 4px 0 14px;
+}
+.picker-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 2px 12px;
+}
+.picker-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+.picker-item:active {
+  transform: scale(0.98);
+  background: rgba(255,210,63,0.18);
+  border-color: var(--gold);
+}
+.picker-random {
+  background: linear-gradient(135deg, var(--gold), var(--gold-soft));
+  color: #1a0d1f;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+.picker-random:active { transform: scale(0.98); }
+
+/* ===== 题库管理页 ===== */
+.page {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3));
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
+}
+.page-header h1 {
+  font-size: 20px;
+  flex: 1;
+  text-align: center;
+}
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 18px;
+  padding: 8px;
+}
+.header-spacer { width: 48px; }
+
+.add-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+}
+#task-input {
+  flex: 1;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+}
+#task-input::placeholder { color: var(--text-dim); }
+.add-btn {
+  background: var(--gold);
+  color: #1a0d1f;
+  border: none;
+  border-radius: 12px;
+  padding: 0 18px;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.task-list {
+  padding: 0 16px;
+}
+.empty-hint {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 24px 0;
+}
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+}
+.task-item .task-text {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+  padding: 8px 0;
+}
+.task-del {
+  background: none;
+  border: none;
+  color: var(--rose);
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.templates {
+  padding: 20px 16px 8px;
+}
+.section-title {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.tpl-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tpl-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+.tpl-btn:active { transform: scale(0.96); }
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 12px 16px 32px;
+}
+.ghost-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  text-align: center;
+  cursor: pointer;
+}
+.ghost-btn:active { transform: scale(0.97); }
+
+/* ===== toast ===== */
+.toast {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 12px;
+  font-size: 15px;
+  z-index: 100;
+  max-width: 80%;
+  text-align: center;
+}

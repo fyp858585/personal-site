@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a0d1f">
+  <title>酒桌抽签 · Drink Party Game</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 游戏触控区（全屏，最底层）。所有手指都按在这里 -->
+    <div id="play-area"></div>
+
+    <!-- 顶部信息条 -->
+    <div id="hud">
+      <button id="tasks-btn" class="icon-btn">题库</button>
+      <div id="counter" class="counter">0 人按住</div>
+      <div class="hud-spacer"></div>
+    </div>
+
+    <!-- 中央提示 -->
+    <div id="hint" class="hint">大家把手指按住屏幕，按好后点下方按钮抽签</div>
+
+    <!-- 开始抽签按钮：是 play-area 的兄弟节点，叠加在最上层；
+         用 touchstart 响应（多点触控下 click 常不触发），触控不冒泡到游戏区，
+         所以点按钮的手指不会被算作游戏圆点 -->
+    <button id="start-btn" class="start-btn">开始抽签</button>
+
+    <!-- 结果横幅（顶部展示，中签者选定的惩罚；中奖圆点会被提到 z-index:30，不会被遮挡） -->
+    <div id="result-banner" class="result-banner hidden">
+      <div class="result-title">🎯 中签！</div>
+      <div id="result-task" class="result-task"></div>
+    </div>
+
+    <!-- 惩罚选择面板：中签揭晓后从底部弹出，让中签者挑一个惩罚 -->
+    <div id="task-picker" class="task-picker hidden">
+      <div class="picker-card">
+        <div class="picker-title">🎯 中签者请选惩罚</div>
+        <div class="picker-sub">点一个执行，或随机帮你选</div>
+        <div id="picker-list" class="picker-list"></div>
+        <button id="picker-random" class="picker-random">🎲 随机帮我选</button>
+      </div>
+    </div>
+
+    <!-- 题库管理页 -->
+    <div id="tasks-page" class="page hidden">
+      <header class="page-header">
+        <button id="tasks-close" class="back-btn">‹ 返回</button>
+        <h1>惩罚题库</h1>
+        <div class="header-spacer"></div>
+      </header>
+
+      <div class="add-row">
+        <input id="task-input" type="text" placeholder="输入惩罚任务，回车添加" maxlength="40">
+        <button id="task-add-btn" class="add-btn">添加</button>
+      </div>
+
+      <div id="task-list" class="task-list"></div>
+
+      <div class="templates">
+        <div class="section-title">模板（点击追加到题库）</div>
+        <div class="tpl-row">
+          <button class="tpl-btn" data-tpl="classic">经典罚酒</button>
+          <button class="tpl-btn" data-tpl="truth">真心话</button>
+          <button class="tpl-btn" data-tpl="dare">大冒险</button>
+          <button class="tpl-btn" data-tpl="mild">轻度养身</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="clear-btn" class="ghost-btn">清空</button>
+        <button id="export-btn" class="ghost-btn">导出 JSON</button>
+        <label class="ghost-btn">导入 JSON<input id="import-btn" type="file" accept="application/json,.json" hidden></label>
+        <button id="reset-btn" class="ghost-btn">恢复默认</button>
+      </div>
+    </div>
+
+    <!-- 轻提示 -->
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="js/store.js" defer></script>
+  <script src="js/game.js" defer></script>
+  <script src="js/ui.js" defer></script>
+</body>
+</html>
