@@ -16,7 +16,7 @@ window.Game = (function () {
   const RULE_COLORS = ['#6ea8fe', '#ffc93c', '#c084fc', '#4ade80'];
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  let save = { program: null, stars: {}, muted: false, seen: false, level: 0 };
+  let save = { program: null, stars: {}, muted: false, seen: false, seenEndless: false, endlessBest: 0, level: 0 };
   let S = null;
   let levelIdx = 0;
   let busy = false;
@@ -26,9 +26,11 @@ window.Game = (function () {
   let hintTimer = null;
   let idleTimer = null;
   let toastTimer = null;
+  let timeGainTimer = null;
   let liveScore = 0;
   let liveCollected = [0, 0, 0, 0, 0];
   let ruleEls = [];
+  let endless = null;
 
   // ---------------- 存档 ----------------
   function loadSave() {
@@ -39,6 +41,7 @@ window.Game = (function () {
     save.program = save.program ? M3P.normalizeProgram(save.program) : M3P.defaultProgram();
     if (!save.stars || typeof save.stars !== 'object') save.stars = {};
     if (!(save.level >= 0 && save.level < M3P.LEVELS.length)) save.level = 0;
+    if (typeof save.endlessBest !== 'number' || !isFinite(save.endlessBest) || save.endlessBest < 0) save.endlessBest = 0;
     SFX.setMuted(!!save.muted);
   }
   function persist() {
@@ -60,14 +63,31 @@ window.Game = (function () {
   function tipHTML(text) {
     return esc(text).replace(/「([^」]+)」/g, '<b>「$1」</b>');
   }
+  function fmtTime(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  }
+  function bonusDetail(b) {
+    const parts = [];
+    if (b.cleared) parts.push(`消除 ${b.cleared} 格`);
+    if (b.chain > 1) parts.push(`连消 ×${b.chain}`);
+    if (b.specials) parts.push(`特殊棋 ×${b.specials}`);
+    if (b.ice) parts.push(`破冰 ×${b.ice}`);
+    return parts.join(' · ');
+  }
 
   // ---------------- 关卡标签 ----------------
   function renderTabs() {
     const wrap = $('#levelTabs');
     wrap.innerHTML = M3P.LEVELS.map((lv, i) => {
       const stars = save.stars[i] || 0;
-      return `<button class="lv-tab${i === levelIdx ? ' active' : ''}${lv.sandbox ? ' sandbox' : ''}" data-i="${i}">
-        <span class="no">${lv.sandbox ? '∞' : i + 1}</span>
+      const cls = [
+        i === levelIdx ? 'active' : '',
+        lv.endless ? 'endless' : (lv.sandbox ? 'sandbox' : ''),
+      ].filter(Boolean).join(' ');
+      const no = lv.endless ? '∞' : (lv.sandbox ? '沙' : i + 1);
+      return `<button class="lv-tab ${cls}" data-i="${i}">
+        <span class="no">${no}</span>
         <span>${esc(lv.name)}</span>
         <span class="sm">${esc(lv.tag)}</span>
         ${stars ? `<span class="st">★</span>` : ''}
@@ -81,7 +101,18 @@ window.Game = (function () {
     levelIdx = Math.max(0, Math.min(M3P.LEVELS.length - 1, i));
     save.level = levelIdx;
     const lv = M3P.LEVELS[levelIdx];
+    const firstEndless = !!lv.endless && !save.seenEndless;
+    if (lv.endless) save.seenEndless = true;
     const seed = opts.seed != null ? (opts.seed >>> 0) : ((Math.random() * 1e9) ^ (levelIdx * 2654435761)) >>> 0;
+
+    endless = lv.endless ? {
+      time: M3P.ENDLESS.base,
+      added: 0,
+      started: false,
+      running: false,
+      over: false,
+      last: Date.now(),
+    } : null;
 
     S = M3P.createGame(lv, seed, save.program);
     liveScore = 0;
@@ -92,6 +123,9 @@ window.Game = (function () {
     drag = null;
     clearTimeout(hintTimer);
     clearTimeout(idleTimer);
+    clearTimeout(timeGainTimer);
+    $('#timeGain').classList.remove('show');
+    $('#movesBox').classList.remove('gain');
     hideOverlay();
     hideToast();
 
@@ -110,6 +144,13 @@ window.Game = (function () {
     clearLog();
     persist();
     scheduleHint();
+    if (firstEndless) {
+      setTimeout(() => {
+        if (S && S.level.endless && endless && !endless.started) {
+          toast('3 分钟起步 · 消除续命 · 第一步开始计时', 4200);
+        }
+      }, 500);
+    }
   }
 
   function drawTip() {
@@ -145,12 +186,50 @@ window.Game = (function () {
   }
 
   // ---------------- HUD ----------------
+  function drawClock() {
+    if (!S || !S.level.endless || !endless) return;
+    const t = Math.max(0, endless.time);
+    const box = $('#movesBox');
+    box.classList.add('endless');
+    box.classList.toggle('low', t <= M3P.ENDLESS.warn);
+    $('#movesLabel').textContent = '剩余';
+    $('#hudMoves').textContent = fmtTime(t);
+    $('#timeFill').style.setProperty('--tw', Math.max(0, Math.min(100, (t / M3P.ENDLESS.base) * 100)) + '%');
+  }
+
+  function drawEndlessGoal(sc) {
+    const best = save.endlessBest || 0;
+    const record = sc > best;
+    const shown = record ? sc : best;
+    const pct = best > 0 ? Math.min(100, (sc / best) * 100) : 0;
+    $('#goalbar').innerHTML = `<div class="goal endless${record ? ' record' : ''}">
+      <i class="dot">∞</i>
+      <div class="gtext">
+        <div class="gline"><span>${record ? '新纪录' : '最佳'} <b>${shown || '—'}</b></span><i>${endless.started ? '续命 +' + endless.added.toFixed(1) + 's' : '第一步开始计时'}</i></div>
+        <div class="gbar"><i style="width:${pct}%"></i></div>
+      </div>
+    </div>`;
+  }
+
   function drawHud(scoreOverride, collectedOverride) {
     if (!S) return;
     const sc = scoreOverride == null ? S.score : scoreOverride;
     const col = collectedOverride || S.collected;
+    const box = $('#movesBox');
+
+    if (S.level.endless && endless) {
+      drawClock();
+      $('#hudScore').textContent = sc;
+      drawEndlessGoal(sc);
+      return;
+    }
+
+    box.classList.remove('endless');
+    box.classList.remove('low');
+    $('#movesLabel').textContent = '步数';
     $('#hudMoves').textContent = S.moves;
-    $('#movesBox').classList.toggle('low', S.moves <= 5);
+    $('#timeFill').style.setProperty('--tw', '0%');
+    box.classList.toggle('low', S.moves <= 5);
     $('#hudScore').textContent = sc;
 
     const bar = $('#goalbar');
@@ -183,9 +262,122 @@ window.Game = (function () {
     }
   }
 
+  // ---------------- 无尽计时 ----------------
+  function startEndlessClock() {
+    if (!endless || endless.started || endless.over) return;
+    endless.started = true;
+    endless.running = true;
+    endless.last = Date.now();
+    SFX.time();
+  }
+
+  function tickEndless() {
+    if (!endless || !S || !S.level.endless || endless.over) return;
+    if (!endless.running || busy || modalOpen || document.hidden) {
+      endless.last = Date.now();
+      return;
+    }
+    const now = Date.now();
+    const dt = Math.min(1, Math.max(0, (now - endless.last) / 1000));
+    endless.last = now;
+    if (dt <= 0) return;
+    endless.time = Math.max(0, endless.time - dt);
+    if (endless.time <= 0) {
+      endless.time = 0;
+      drawClock();
+      endEndless();
+      return;
+    }
+    drawClock();
+  }
+
+  function grantEndlessBonus(steps) {
+    if (!endless || endless.over) return null;
+    const b = M3P.endlessBonus(steps);
+    const before = endless.time;
+    endless.time = Math.min(M3P.ENDLESS.cap, endless.time + b.seconds);
+    b.granted = Math.round((endless.time - before) * 10) / 10;
+    endless.added = Math.round((endless.added + b.granted) * 10) / 10;
+    if (b.granted > 0) {
+      showTimeGain(b.granted);
+      drawClock();
+    }
+    return b;
+  }
+
+  function showTimeGain(sec) {
+    const el = $('#timeGain');
+    if (!el) return;
+    el.textContent = `+${sec.toFixed(1)}s`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(timeGainTimer);
+    timeGainTimer = setTimeout(() => el.classList.remove('show'), 950);
+    const box = $('#movesBox');
+    box.classList.add('gain');
+    setTimeout(() => box.classList.remove('gain'), 600);
+    if (sec >= 1.5) SFX.time();
+  }
+
+  function endEndless() {
+    if (!endless || endless.over) return;
+    endless.over = true;
+    endless.running = false;
+    resultShown = true;
+    hideToast();
+    modalOpen = true;
+    busy = false;
+    clearTimeout(hintTimer);
+    clearTimeout(idleTimer);
+    View.clearHint();
+    View.select(-1);
+
+    const oldBest = save.endlessBest || 0;
+    const isBest = S.score > oldBest;
+    if (isBest) {
+      save.endlessBest = S.score;
+      persist();
+    }
+    SFX.timeUp();
+    showEndlessResult(isBest, oldBest);
+  }
+
+  function showEndlessResult(isBest, oldBest) {
+    const lv = M3P.LEVELS[levelIdx];
+    const dlg = $('#dialog');
+    dlg.className = 'dialog endless';
+    dlg.innerHTML = `
+      <h2>收工</h2>
+      <p class="sub">${esc(lv.name)} · 3 分钟班次</p>
+      <div class="scoreline">本轮 <b>${S.score}</b> 分</div>
+      <div class="endless-stats">
+        <div><b>${save.endlessBest}</b><span>历史最佳</span></div>
+        <div><b>+${endless.added.toFixed(1)}s</b><span>续命</span></div>
+        <div><b>${S.maxChain > 1 ? '×' + S.maxChain : '—'}</b><span>最高连消</span></div>
+      </div>
+      ${isBest
+        ? `<p class="tip newbest">新纪录！本班 ${S.score} 分</p>`
+        : (oldBest ? `<p class="tip">距离最佳还差 ${oldBest - S.score} 分</p>` : `<p class="tip">第一班收工 · 分数记下了</p>`)}
+      <p class="tip">时间归零才收工；下一班从 3:00 开始，消除继续续命。</p>
+      <div class="btns">
+        <button id="dlgAgain">再来一班</button>
+        <button id="dlgEdit" class="ghost">去改程序</button>
+      </div>`;
+    $('#dlgAgain').addEventListener('click', () => startLevel(levelIdx));
+    $('#dlgEdit').addEventListener('click', () => {
+      hideOverlay();
+      modalOpen = false;
+      $('#levelTip').innerHTML = tipHTML('时间到。改完程序，点「重开本盘」或「换一盘」再来一班。');
+      toast('改完程序，点「重开本盘」或「换一盘」再来一班', 3600);
+    });
+    $('#overlay').classList.remove('hidden');
+  }
+
   // ---------------- 关卡结束 ----------------
   function checkEnd() {
     if (!S || resultShown) return;
+    if (S.level.endless) return;
     if (M3P.isWin(S)) { resultShown = true; showResult(true); return; }
     if (!S.level.sandbox && S.moves <= 0) { resultShown = true; showResult(false); }
   }
@@ -228,7 +420,7 @@ window.Game = (function () {
           <button id="dlgRetry" class="ghost">重开本盘</button>
         </div>`;
       $('#dlgNext').addEventListener('click', () => {
-        if (isLast) { hideOverlay(); modalOpen = false; toast('四个关卡都走完了 · 可以去沙盒继续折腾', 3000); }
+        if (isLast) { hideOverlay(); modalOpen = false; toast('全部关卡走完了 · 去无尽果园继续打', 3000); }
         else startLevel(levelIdx + 1);
       });
       $('#dlgRetry').addEventListener('click', () => startLevel(levelIdx, { seed: S.seed }));
@@ -278,6 +470,7 @@ window.Game = (function () {
       <h2>这不是普通三消<span class="sub2">右边不是代码编辑器，是一张会执行的规则表</span></h2>
       <p>左边照常玩。右边四条规则从上往下检查，<b>第一条满足的生效，后面的直接跳过</b>——这就是 if / else。</p>
       <p class="fine">不同触发时机是分开检查的：<b>「每步开始」的规则不会挡住「玩家消除」的规则</b>，它们各算各的。</p>
+      <p class="fine">第 5 个标签是<b>无尽果园</b>：3 分钟起步，消除会续命；时间归零才收工。</p>
       <div class="help-demo">
         <div><span class="h">①</span> 当玩家消除 且 连数≥5 <span class="a">→ 彩虹球</span></div>
         <div><span class="h">②</span> 当玩家消除 且 形状=折角 <span class="a">→ 炸弹</span></div>
@@ -520,7 +713,7 @@ window.Game = (function () {
     return lines.map(ruleLineHTML).join('');
   }
 
-  function addLog(before, steps) {
+  function addLog(before, steps, meta) {
     const groups = new Map();
     const turnLines = [];
     let maxChain = 0;
@@ -567,11 +760,15 @@ window.Game = (function () {
 
     const gain = S.score - before.score;
     const stepNo = S.movesTotal - S.moves;
+    const timeLine = meta && meta.timeBonus > 0
+      ? `<div class="log-time">⏱ 续命 <b>+${meta.timeBonus.toFixed(1)}s</b><span>${esc(meta.timeDetail || '')}</span></div>`
+      : '';
     const html = `<div class="log-move">
       <div class="log-title">
         <span>第 ${stepNo} 步</span>
         <span><span class="gain">+${gain}</span>${maxChain > 1 ? ` <span class="chain">连消 ×${maxChain}</span>` : ''}</span>
       </div>
+      ${timeLine}
       ${secs.join('')}
     </div>`;
 
@@ -584,7 +781,10 @@ window.Game = (function () {
   }
 
   function clearLog() {
-    $('#log').innerHTML = '<div class="log-empty">走一步。这里会逐条告诉你：<br>哪条规则触发了，哪条没通过、实际值是多少。</div>';
+    const msg = S && S.level.endless
+      ? '走一步。这里会逐条告诉你：<br>哪条规则触发了，以及这一手续了几秒。'
+      : '走一步。这里会逐条告诉你：<br>哪条规则触发了，哪条没通过、实际值是多少。';
+    $('#log').innerHTML = `<div class="log-empty">${msg}</div>`;
   }
 
   // ============================================================
@@ -611,7 +811,7 @@ window.Game = (function () {
   }
   function autoHint() {
     if (busy || modalOpen || !S) return;
-    if (S.moves <= 0) return;
+    if (S.moves <= 0 || (endless && endless.over)) return;
     const pair = M3P.findHint(S);
     if (pair) View.hint(pair);
   }
@@ -619,6 +819,7 @@ window.Game = (function () {
   function onDown(ev) {
     SFX.unlock();
     if (busy || modalOpen || !S) return;
+    if (endless && endless.over) { toast('时间到 · 点「重开本盘」或「换一盘」再来一班', 2200); return; }
     if (S.moves <= 0) { toast('没有步数了 · 改程序后点「重开本盘」', 2200); return; }
     const i = cellAt(ev);
     if (i < 0) return;
@@ -658,6 +859,7 @@ window.Game = (function () {
     removeGrab();
     if (wasDrag || busy || modalOpen) return;
     if (!S || S.moves <= 0) return;
+    if (endless && endless.over) return;
 
     const sel = View.getSelected();
     if (sel >= 0 && sel !== start) {
@@ -713,6 +915,7 @@ window.Game = (function () {
       return;
     }
 
+    startEndlessClock();
     drawHud(liveScore, liveCollected);
     await View.play(res.steps, {
       onClear(st) {
@@ -729,10 +932,11 @@ window.Game = (function () {
       },
     });
 
+    const bonus = endless && !endless.over ? grantEndlessBonus(res.steps) : null;
     liveScore = S.score;
     liveCollected = S.collected.slice();
     drawHud();
-    addLog(before, res.steps);
+    addLog(before, res.steps, bonus ? { timeBonus: bonus.granted, timeDetail: bonusDetail(bonus) } : null);
     busy = false;
     await wait(60);
     checkEnd();
@@ -809,10 +1013,15 @@ window.Game = (function () {
       new ResizeObserver(() => View.layout()).observe($('#boardWrap'));
     }
 
+    setInterval(tickEndless, 200);
+    document.addEventListener('visibilitychange', () => {
+      if (endless) endless.last = Date.now();
+    });
+
     if (!save.seen) setTimeout(showHelp, 500);
   }
 
-  return { init, toast, get state() { return S; } };
+  return { init, toast, get state() { return S; }, get endless() { return endless; } };
 })();
 
 document.addEventListener('DOMContentLoaded', () => window.Game.init());

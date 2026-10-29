@@ -116,6 +116,14 @@ window.SFX = (function () {
     },
     ice() { noise(0.14, { from: 5200, to: 2200, vol: 0.16 }); tone(1320, 0.08, { type: 'sine', vol: 0.12 }); },
     coin() { tone(1180, 0.05, { type: 'sine', vol: 0.24 }); tone(1560, 0.08, { type: 'sine', vol: 0.18, delay: 0.04 }); },
+    time() {
+      tone(880, 0.08, { type: 'triangle', vol: 0.22, to: 1180 });
+      tone(1320, 0.1, { type: 'sine', vol: 0.16, delay: 0.055 });
+    },
+    timeUp() {
+      [660, 520, 390, 260].forEach((f, i) => tone(f, 0.24, { type: 'sine', vol: 0.28, delay: i * 0.12 }));
+      noise(0.2, { from: 700, to: 160, vol: 0.18 });
+    },
   };
   return api;
 })();

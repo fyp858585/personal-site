@@ -31,6 +31,7 @@ const L1 = E.LEVELS[0];
 const L2 = E.LEVELS[1];
 const L3 = E.LEVELS[2];
 const L4 = E.LEVELS[3];
+const L5 = E.LEVELS[4];
 
 function ev(over) {
   return Object.assign({
@@ -352,6 +353,12 @@ test('目标 / 过关 / 星级 / 关卡配置', () => {
   assert.equal(L2.goals[0].score, 4500);
   assert.equal(L3.moves, 20);
   assert.equal(L4.sandbox, true);
+  assert.equal(L5.endless, true);
+  assert.equal(L5.sandbox, true);
+  assert.equal(L5.goals.length, 0);
+  assert.equal(E.levelFor(4), L5);
+  assert.equal(E.ENDLESS.base, 180);
+  assert.equal(E.ENDLESS.cap, 300);
   assert.equal(E.iceCells(L3.ice).length, 48);
 
   const S = E.createGame(L1, 5, E.defaultProgram());
@@ -397,6 +404,37 @@ test('沙盒没有目标，不会判胜', () => {
   assert.equal(E.isWin(S), false);
   S.moves = 0;
   assert.equal(E.isLose(S), true); // 引擎层仍会判负；UI 对沙盒跳过结算
+});
+
+test('无尽加时：按消除 / 连消 / 特殊棋 / 破冰累计', () => {
+  const bonus = E.endlessBonus([
+    { t: 'match', chain: 1, groups: [{}, {}, {}] },
+    { t: 'clear', chain: 1, cells: [{}, {}, {}] },
+    { t: 'spawn', special: 'rocketH' },
+    { t: 'ice', cells: [7] },
+    { t: 'match', chain: 2, groups: [{}] },
+    { t: 'clear', chain: 2, cells: [{}, {}] },
+  ]);
+  assert.equal(bonus.cleared, 5);
+  assert.equal(bonus.groups, 4);
+  assert.equal(bonus.specials, 1);
+  assert.equal(bonus.ice, 1);
+  assert.equal(bonus.chain, 2);
+  // 5*0.12 + 4*0.35 + 1*0.6 + 1*1.0 + 1*0.5 = 4.1
+  assert.equal(bonus.seconds, 4.1);
+  assert.equal(E.endlessBonus([]).seconds, 0);
+});
+
+test('无尽关：有效一步会产生加时，且不判胜', () => {
+  const S = E.createGame(L5, 8, E.defaultProgram());
+  const pair = E.findHint(S);
+  assert.ok(pair);
+  const res = E.resolveMove(S, pair[0], pair[1]);
+  assert.equal(res.invalid, false);
+  const bonus = E.endlessBonus(res.steps);
+  assert.ok(bonus.seconds > 0);
+  assert.equal(bonus.cleared > 0, true);
+  assert.equal(E.isWin(S), false);
 });
 
 // ------------------------------------------------------------

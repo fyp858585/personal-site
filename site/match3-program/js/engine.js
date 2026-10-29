@@ -23,6 +23,20 @@
   const BONUS_AMT = 150;
   const SPAWN_SCORE = 20;
 
+  // 无尽模式：3 分钟起步，靠操作把时间打回来，最多囤到 5 分钟。
+  // 计时器本身在 app 层（需要暂停 / 页面隐藏），这里只负责
+  //「这一手该续多少秒」的纯逻辑，方便单测和调数值。
+  const ENDLESS = Object.freeze({
+    base: 180,
+    cap: 300,
+    warn: 20,
+    perTile: 0.12,
+    perGroup: 0.35,
+    perChain: 0.6,
+    perSpecial: 1.0,
+    perIce: 0.5,
+  });
+
   const COLORS = ['#ff6b5b', '#ffc93c', '#5fd97a', '#4aa8ff', '#b07cff'];
   const COLOR_NAMES = ['红', '黄', '绿', '蓝', '紫'];
   const ELEMENTS = ['圆宝石', '星星', '方糖', '三角', '菱形'];
@@ -182,6 +196,16 @@
       ice: null,
       sandbox: true,
       tip: '随便改。改完点「重开本盘」，同一个棋盘会用新程序重来，差别一眼可见。',
+      rec: null,
+    },
+    {
+      id: 5, name: '无尽果园', tag: '3 分钟续命',
+      moves: 99999,
+      goals: [],
+      ice: null,
+      sandbox: true,
+      endless: true,
+      tip: '3 分钟起步，消除能把时间打回来。四连、连消、特殊棋续得更多；归零才收工。',
       rec: null,
     },
   ];
@@ -1061,11 +1085,41 @@
     };
   }
 
+  /**
+   * 无尽模式：把一手结算的步骤流折算成「续命秒数」。
+   * 只看玩家真实消掉的东西，不看规则加分，避免“刷分规则”同时刷时间。
+   * 返回值保留明细，日志里可以解释这 2.4 秒是怎么来的。
+   */
+  function endlessBonus(steps) {
+    let cleared = 0, groups = 0, specials = 0, ice = 0, chain = 0;
+    for (const st of steps || []) {
+      if (st.t === 'match') {
+        groups += (st.groups || []).length;
+        chain = Math.max(chain, st.chain || 0);
+      } else if (st.t === 'clear') {
+        cleared += (st.cells || []).length;
+      } else if (st.t === 'spawn') {
+        specials++;
+      } else if (st.t === 'ice') {
+        ice += (st.cells || []).length;
+      }
+    }
+    const raw = cleared * ENDLESS.perTile
+      + groups * ENDLESS.perGroup
+      + Math.max(0, chain - 1) * ENDLESS.perChain
+      + specials * ENDLESS.perSpecial
+      + ice * ENDLESS.perIce;
+    return {
+      seconds: Math.round(raw * 10) / 10,
+      cleared, groups, specials, ice, chain,
+    };
+  }
+
   // ============================================================
   // 导出
   // ============================================================
   const API = {
-    W, H, N_COLORS, MAX_RULES, BONUS_AMT,
+    W, H, N_COLORS, MAX_RULES, BONUS_AMT, ENDLESS,
     COLORS, COLOR_NAMES, ELEMENTS, SPECIALS,
     TRIGGERS, CONDS, CONDS_FOR, ACTIONS, ACTIONS_FOR,
     EMPTY_RULE, emptyRule, makeRule, defaultProgram, normalizeProgram, cloneProgram,
@@ -1077,6 +1131,7 @@
     resolveMove, resolveTap, hasAnyMove, findHint, shuffle, settle,
     goalProgress, isWin, isLose, starsFor, goalText, iceLeft, iceCells,
     cloneGame, botMove, botCandidates, simulateLevel,
+    endlessBonus,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
