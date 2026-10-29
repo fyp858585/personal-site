@@ -36,6 +36,7 @@
 
 ## 硬规则
 
+- `nginx.conf` 是打进镜像的：改完要在服务器执行 `docker compose up -d --build nginx`；只改 `site/` 下的静态文件不用重建（volume 挂载）。
 - 不提交 `.DS_Store`；提交前 `git status --short` 检查一遍。
 - 不改 `site/match3/`（基础款）的既有行为；新玩法放新目录。
 - 不 force push；push 失败不要假装成功，保留 commit，报告错误后重试。

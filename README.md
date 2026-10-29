@@ -33,6 +33,8 @@ open http://localhost:8080
 
 修改 `site/` 下任何文件 → 刷新浏览器即时生效（volume 挂载）。
 
+> `nginx/nginx.conf` 是打进镜像的，改完要在服务器执行 `docker compose up -d --build nginx`；只改 `site/` 下的静态文件不用重建。
+
 ## 已上线 Demo
 
 | 路径 | 内容 |
