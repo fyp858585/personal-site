@@ -358,7 +358,7 @@ test('目标 / 过关 / 星级 / 关卡配置', () => {
   assert.equal(L5.goals.length, 0);
   assert.equal(E.levelFor(4), L5);
   assert.equal(E.ENDLESS.base, 180);
-  assert.equal(E.ENDLESS.cap, 300);
+  assert.equal(E.ENDLESS.cap, undefined); // 3 分钟是终点线，不能靠消除加时
   assert.equal(E.iceCells(L3.ice).length, 48);
 
   const S = E.createGame(L1, 5, E.defaultProgram());
@@ -406,8 +406,8 @@ test('沙盒没有目标，不会判胜', () => {
   assert.equal(E.isLose(S), true); // 引擎层仍会判负；UI 对沙盒跳过结算
 });
 
-test('无尽加时：按消除 / 连消 / 特殊棋 / 破冰累计', () => {
-  const bonus = E.endlessBonus([
+test('无尽统计：这一手消了多少格、几组、几个特殊棋', () => {
+  const st = E.endlessStats([
     { t: 'match', chain: 1, groups: [{}, {}, {}] },
     { t: 'clear', chain: 1, cells: [{}, {}, {}] },
     { t: 'spawn', special: 'rocketH' },
@@ -415,25 +415,35 @@ test('无尽加时：按消除 / 连消 / 特殊棋 / 破冰累计', () => {
     { t: 'match', chain: 2, groups: [{}] },
     { t: 'clear', chain: 2, cells: [{}, {}] },
   ]);
-  assert.equal(bonus.cleared, 5);
-  assert.equal(bonus.groups, 4);
-  assert.equal(bonus.specials, 1);
-  assert.equal(bonus.ice, 1);
-  assert.equal(bonus.chain, 2);
-  // 5*0.12 + 4*0.35 + 1*0.6 + 1*1.0 + 1*0.5 = 4.1
-  assert.equal(bonus.seconds, 4.1);
-  assert.equal(E.endlessBonus([]).seconds, 0);
+  assert.equal(st.cleared, 5);
+  assert.equal(st.groups, 4);
+  assert.equal(st.specials, 1);
+  assert.equal(st.ice, 1);
+  assert.equal(st.chain, 2);
+  assert.equal(st.seconds, undefined); // 不再有「续命」这回事
+  assert.deepEqual(E.endlessStats([]), { cleared: 0, groups: 0, specials: 0, ice: 0, chain: 0 });
 });
 
-test('无尽关：有效一步会产生加时，且不判胜', () => {
+test('无尽评级：按分数分 S/A/B/C/D 五档', () => {
+  assert.equal(E.endlessGrade(0).grade, 'D');
+  assert.equal(E.endlessGrade(2999).grade, 'D');
+  assert.equal(E.endlessGrade(3000).grade, 'C');
+  assert.equal(E.endlessGrade(8000).grade, 'B');
+  assert.equal(E.endlessGrade(15000).grade, 'A');
+  assert.equal(E.endlessGrade(25000).grade, 'S');
+  assert.equal(E.endlessGrade(999999).grade, 'S');
+  assert.equal(E.endlessGrade(8000).label, '稳住节奏');
+});
+
+test('无尽关：有效一步能统计消除，且不判胜', () => {
   const S = E.createGame(L5, 8, E.defaultProgram());
   const pair = E.findHint(S);
   assert.ok(pair);
   const res = E.resolveMove(S, pair[0], pair[1]);
   assert.equal(res.invalid, false);
-  const bonus = E.endlessBonus(res.steps);
-  assert.ok(bonus.seconds > 0);
-  assert.equal(bonus.cleared > 0, true);
+  const st = E.endlessStats(res.steps);
+  assert.ok(st.cleared > 0);
+  assert.ok(st.groups > 0);
   assert.equal(E.isWin(S), false);
 });
 

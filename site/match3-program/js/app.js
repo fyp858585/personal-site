@@ -16,7 +16,7 @@ window.Game = (function () {
   const RULE_COLORS = ['#6ea8fe', '#ffc93c', '#c084fc', '#4ade80'];
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  let save = { program: null, stars: {}, muted: false, seen: false, seenEndless: false, endlessBest: 0, level: 0 };
+  let save = { program: null, stars: {}, muted: false, seen: false, seenEndless: false, endlessBest: null, endlessProg: {}, level: 0 };
   let S = null;
   let levelIdx = 0;
   let busy = false;
@@ -26,8 +26,8 @@ window.Game = (function () {
   let hintTimer = null;
   let idleTimer = null;
   let toastTimer = null;
-  let timeGainTimer = null;
   let liveScore = 0;
+  let liveCleared = 0;
   let liveCollected = [0, 0, 0, 0, 0];
   let ruleEls = [];
   let endless = null;
@@ -41,7 +41,31 @@ window.Game = (function () {
     save.program = save.program ? M3P.normalizeProgram(save.program) : M3P.defaultProgram();
     if (!save.stars || typeof save.stars !== 'object') save.stars = {};
     if (!(save.level >= 0 && save.level < M3P.LEVELS.length)) save.level = 0;
-    if (typeof save.endlessBest !== 'number' || !isFinite(save.endlessBest) || save.endlessBest < 0) save.endlessBest = 0;
+    // 老档：无尽最佳曾是一个纯数字（只记分数），迁成完整纪录
+    if (typeof save.endlessBest === 'number') {
+      save.endlessBest = save.endlessBest > 0 ? { score: save.endlessBest, cleared: 0, chain: 0, prog: '' } : null;
+    }
+    if (save.endlessBest && typeof save.endlessBest === 'object') {
+      save.endlessBest = {
+        score: Math.max(0, Math.floor(+save.endlessBest.score || 0)),
+        cleared: Math.max(0, Math.floor(+save.endlessBest.cleared || 0)),
+        chain: Math.max(0, Math.floor(+save.endlessBest.chain || 0)),
+        prog: String(save.endlessBest.prog || ''),
+      };
+      if (!save.endlessBest.score) save.endlessBest = null;
+    } else {
+      save.endlessBest = null;
+    }
+    if (!save.endlessProg || typeof save.endlessProg !== 'object') save.endlessProg = {};
+    for (const k of Object.keys(save.endlessProg)) {
+      const v = save.endlessProg[k];
+      if (!v || typeof v !== 'object') { delete save.endlessProg[k]; continue; }
+      save.endlessProg[k] = {
+        score: Math.max(0, Math.floor(+v.score || 0)),
+        cleared: Math.max(0, Math.floor(+v.cleared || 0)),
+        runs: Math.max(0, Math.floor(+v.runs || 0)),
+      };
+    }
     SFX.setMuted(!!save.muted);
   }
   function persist() {
@@ -67,13 +91,29 @@ window.Game = (function () {
     sec = Math.max(0, Math.floor(sec));
     return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
   }
-  function bonusDetail(b) {
+  function clearDetail(st) {
     const parts = [];
-    if (b.cleared) parts.push(`消除 ${b.cleared} 格`);
-    if (b.chain > 1) parts.push(`连消 ×${b.chain}`);
-    if (b.specials) parts.push(`特殊棋 ×${b.specials}`);
-    if (b.ice) parts.push(`破冰 ×${b.ice}`);
+    if (st.groups) parts.push(`匹配 ${st.groups} 组`);
+    if (st.specials) parts.push(`特殊棋 ×${st.specials}`);
+    if (st.ice) parts.push(`破冰 ×${st.ice}`);
     return parts.join(' · ');
+  }
+
+  // 程序指纹：把规则表压成一行短标签，用来在「策略榜」里区分不同配置
+  function progTag(prog) {
+    const parts = [];
+    for (const r of prog || []) {
+      if (!r || !r.on || !r.action) continue;
+      const trig = (M3P.TRIGGERS[r.trigger] || {}).short || '';
+      const cond = [r.c1, r.c2].filter(Boolean).map((id) => {
+        const c = M3P.CONDS[id];
+        return c ? c.label.replace('连数 ≥ ', '≥').replace('连消 ≥ ', '连消≥')
+          .replace('形状 = ', '').replace('方向 = ', '').replace('颜色 = ', '') : '';
+      }).filter(Boolean).join('+');
+      const act = ((M3P.ACTIONS[r.action] || {}).verb || '').replace('生成', '').replace('随机一枚变', '随机');
+      parts.push(`${trig}${cond ? ' ' + cond : ''}→${act}`);
+    }
+    return parts.length ? parts.join(' · ') : '空程序';
   }
 
   // ---------------- 关卡标签 ----------------
@@ -85,7 +125,7 @@ window.Game = (function () {
         i === levelIdx ? 'active' : '',
         lv.endless ? 'endless' : (lv.sandbox ? 'sandbox' : ''),
       ].filter(Boolean).join(' ');
-      const no = lv.endless ? '∞' : (lv.sandbox ? '沙' : i + 1);
+      const no = lv.endless ? '3′' : (lv.sandbox ? '沙' : i + 1);
       return `<button class="lv-tab ${cls}" data-i="${i}">
         <span class="no">${no}</span>
         <span>${esc(lv.name)}</span>
@@ -107,7 +147,10 @@ window.Game = (function () {
 
     endless = lv.endless ? {
       time: M3P.ENDLESS.base,
-      added: 0,
+      cleared: 0,
+      groups: 0,
+      specials: 0,
+      ice: 0,
       started: false,
       running: false,
       over: false,
@@ -116,6 +159,7 @@ window.Game = (function () {
 
     S = M3P.createGame(lv, seed, save.program);
     liveScore = 0;
+    liveCleared = 0;
     liveCollected = [0, 0, 0, 0, 0];
     busy = false;
     modalOpen = false;
@@ -123,9 +167,6 @@ window.Game = (function () {
     drag = null;
     clearTimeout(hintTimer);
     clearTimeout(idleTimer);
-    clearTimeout(timeGainTimer);
-    $('#timeGain').classList.remove('show');
-    $('#movesBox').classList.remove('gain');
     hideOverlay();
     hideToast();
 
@@ -147,7 +188,7 @@ window.Game = (function () {
     if (firstEndless) {
       setTimeout(() => {
         if (S && S.level.endless && endless && !endless.started) {
-          toast('3 分钟起步 · 消除续命 · 第一步开始计时', 4200);
+          toast('3 分钟一班 · 时间到就收工 · 第一步开始计时', 4200);
         }
       }, 500);
     }
@@ -197,21 +238,28 @@ window.Game = (function () {
     $('#timeFill').style.setProperty('--tw', Math.max(0, Math.min(100, (t / M3P.ENDLESS.base) * 100)) + '%');
   }
 
-  function drawEndlessGoal(sc) {
-    const best = save.endlessBest || 0;
-    const record = sc > best;
-    const shown = record ? sc : best;
-    const pct = best > 0 ? Math.min(100, (sc / best) * 100) : 0;
+  function drawEndlessGoal(sc, clearedOverride) {
+    const best = save.endlessBest;
+    const bestScore = best ? best.score : 0;
+    const bestCleared = best ? best.cleared : 0;
+    const cleared = clearedOverride == null ? endless.cleared : clearedOverride;
+    const record = endless.started && !endless.over && sc > bestScore;
+    const pct = bestScore > 0 ? Math.min(100, (sc / bestScore) * 100) : 0;
+    const right = record ? '新纪录' : (bestScore ? `最佳 ${bestScore}` : '本机首个纪录');
+    const sub = !endless.started
+      ? `已消 <b>${cleared}</b> 格 · 第一步开始计时`
+      : `已消 <b>${cleared}</b> 格${bestCleared ? ` · 最佳 ${bestCleared} 格` : ''}`;
     $('#goalbar').innerHTML = `<div class="goal endless${record ? ' record' : ''}">
-      <i class="dot">∞</i>
+      <i class="dot">⏱</i>
       <div class="gtext">
-        <div class="gline"><span>${record ? '新纪录' : '最佳'} <b>${shown || '—'}</b></span><i>${endless.started ? '续命 +' + endless.added.toFixed(1) + 's' : '第一步开始计时'}</i></div>
+        <div class="gline"><span><b>${sc}</b> 分</span><i>${right}</i></div>
+        <div class="gsub">${sub}</div>
         <div class="gbar"><i style="width:${pct}%"></i></div>
       </div>
     </div>`;
   }
 
-  function drawHud(scoreOverride, collectedOverride) {
+  function drawHud(scoreOverride, collectedOverride, clearedOverride) {
     if (!S) return;
     const sc = scoreOverride == null ? S.score : scoreOverride;
     const col = collectedOverride || S.collected;
@@ -220,7 +268,7 @@ window.Game = (function () {
     if (S.level.endless && endless) {
       drawClock();
       $('#hudScore').textContent = sc;
-      drawEndlessGoal(sc);
+      drawEndlessGoal(sc, clearedOverride);
       return;
     }
 
@@ -291,35 +339,6 @@ window.Game = (function () {
     drawClock();
   }
 
-  function grantEndlessBonus(steps) {
-    if (!endless || endless.over) return null;
-    const b = M3P.endlessBonus(steps);
-    const before = endless.time;
-    endless.time = Math.min(M3P.ENDLESS.cap, endless.time + b.seconds);
-    b.granted = Math.round((endless.time - before) * 10) / 10;
-    endless.added = Math.round((endless.added + b.granted) * 10) / 10;
-    if (b.granted > 0) {
-      showTimeGain(b.granted);
-      drawClock();
-    }
-    return b;
-  }
-
-  function showTimeGain(sec) {
-    const el = $('#timeGain');
-    if (!el) return;
-    el.textContent = `+${sec.toFixed(1)}s`;
-    el.classList.remove('show');
-    void el.offsetWidth;
-    el.classList.add('show');
-    clearTimeout(timeGainTimer);
-    timeGainTimer = setTimeout(() => el.classList.remove('show'), 950);
-    const box = $('#movesBox');
-    box.classList.add('gain');
-    setTimeout(() => box.classList.remove('gain'), 600);
-    if (sec >= 1.5) SFX.time();
-  }
-
   function endEndless() {
     if (!endless || endless.over) return;
     endless.over = true;
@@ -333,43 +352,104 @@ window.Game = (function () {
     View.clearHint();
     View.select(-1);
 
-    const oldBest = save.endlessBest || 0;
-    const isBest = S.score > oldBest;
-    if (isBest) {
-      save.endlessBest = S.score;
-      persist();
+    const score = S.score;
+    const cleared = endless.cleared;
+    const chain = S.maxChain;
+    const tag = progTag(save.program);
+    const oldBest = save.endlessBest;
+    const prevBestScore = oldBest ? oldBest.score : 0;
+    const prevBestCleared = oldBest ? oldBest.cleared : 0;
+    const isBest = score > prevBestScore;
+    const moreCleared = cleared > prevBestCleared;
+    // 最佳分数、最佳格数分开记：分高和消得多都值得留档
+    save.endlessBest = {
+      score: Math.max(prevBestScore, score),
+      cleared: Math.max(prevBestCleared, cleared),
+      chain: Math.max(oldBest ? oldBest.chain : 0, chain),
+      prog: isBest ? tag : (oldBest ? oldBest.prog : tag),
+    };
+
+    // 策略榜：按程序指纹记「这套配置最好的一班」，谁配得好一眼可见
+    if (score > 0 || cleared > 0) {
+      const pb = save.endlessProg[tag] || { score: 0, cleared: 0, runs: 0 };
+      pb.runs = (pb.runs || 0) + 1;
+      if (score > pb.score || (score === pb.score && cleared > pb.cleared)) {
+        pb.score = score;
+        pb.cleared = cleared;
+      }
+      save.endlessProg[tag] = pb;
+      trimProgBoard();
     }
+    persist();
+
     SFX.timeUp();
-    showEndlessResult(isBest, oldBest);
+    showEndlessResult({ isBest, moreCleared, prevBestScore, prevBestCleared, tag });
   }
 
-  function showEndlessResult(isBest, oldBest) {
+  function trimProgBoard() {
+    const entries = Object.entries(save.endlessProg);
+    if (entries.length <= 12) return;
+    entries.sort((a, b) => b[1].score - a[1].score || b[1].cleared - a[1].cleared);
+    save.endlessProg = Object.fromEntries(entries.slice(0, 12));
+  }
+
+  function progBoardRows(curTag) {
+    const entries = Object.entries(save.endlessProg)
+      .map(([tag, v]) => ({ tag, score: v.score, cleared: v.cleared, runs: v.runs }))
+      .sort((a, b) => b.score - a.score || b.cleared - a.cleared);
+    const curIdx = entries.findIndex((e) => e.tag === curTag);
+    const top = entries.slice(0, 3);
+    if (curIdx > 2) top.push(entries[curIdx]);
+    return top.map((e) => {
+      const rank = entries.indexOf(e) + 1;
+      return `<div class="pb-row${e.tag === curTag ? ' cur' : ''}"><i>${rank}</i><span class="nm">${esc(e.tag)}</span><b>${e.score}</b><span class="cl">${e.cleared}格</span></div>`;
+    }).join('');
+  }
+
+  function showEndlessResult(r) {
     const lv = M3P.LEVELS[levelIdx];
+    const grade = M3P.endlessGrade(S.score);
+    const best = save.endlessBest;
+    const perMin = Math.round(S.score / (M3P.ENDLESS.base / 60));
+    const chainTxt = S.maxChain > 1 ? '×' + S.maxChain : '—';
     const dlg = $('#dialog');
     dlg.className = 'dialog endless';
     dlg.innerHTML = `
-      <h2>收工</h2>
-      <p class="sub">${esc(lv.name)} · 3 分钟班次</p>
-      <div class="scoreline">本轮 <b>${S.score}</b> 分</div>
+      <h2>时间到</h2>
+      <p class="sub">${esc(lv.name)} · 3 分钟一班</p>
+      <div class="scoreline">本轮 <b>${S.score}</b> 分 <span class="grade g${grade.grade}">${grade.grade}</span></div>
+      <p class="gradeline">${esc(grade.label)} · 每分钟 ${perMin} 分</p>
       <div class="endless-stats">
-        <div><b>${save.endlessBest}</b><span>历史最佳</span></div>
-        <div><b>+${endless.added.toFixed(1)}s</b><span>续命</span></div>
-        <div><b>${S.maxChain > 1 ? '×' + S.maxChain : '—'}</b><span>最高连消</span></div>
+        <div><b>${endless.cleared}</b><span>消除格数</span></div>
+        <div><b>${chainTxt}</b><span>最高连消</span></div>
+        <div><b>${best.score}</b><span>最佳分数</span></div>
+        <div><b>${best.cleared}</b><span>最佳格数</span></div>
       </div>
-      ${isBest
-        ? `<p class="tip newbest">新纪录！本班 ${S.score} 分</p>`
-        : (oldBest ? `<p class="tip">距离最佳还差 ${oldBest - S.score} 分</p>` : `<p class="tip">第一班收工 · 分数记下了</p>`)}
-      <p class="tip">时间归零才收工；下一班从 3:00 开始，消除继续续命。</p>
+      ${r.isBest
+        ? (r.prevBestScore
+          ? `<p class="tip newbest">新纪录！比之前最好的 ${r.prevBestScore} 分多 ${S.score - r.prevBestScore} 分</p>`
+          : `<p class="tip newbest">第一班纪录：${S.score} 分 · ${endless.cleared} 格</p>`)
+        : (r.moreCleared
+          ? `<p class="tip newbest">分数差 ${r.prevBestScore - S.score} 分，但消除格数破了纪录：${endless.cleared} 格</p>`
+          : `<p class="tip">距离最佳还差 ${r.prevBestScore - S.score} 分</p>`)}
+      <p class="progline">本班程序：<b>${esc(r.tag)}</b></p>
+      <div class="progboard">
+        <div class="pb-title">策略榜 · 每套程序的最好一班</div>
+        ${progBoardRows(r.tag)}
+      </div>
+      <p class="tip">3 分钟是终点线：时间不会变多，比的就是这段时间里消掉多少格、程序配得好不好。想换程序对比：点「去改程序」，改完再点左下角「重开本盘」——种子不变，棋盘一模一样。</p>
       <div class="btns">
-        <button id="dlgAgain">再来一班</button>
+        <button id="dlgSame">同盘重打</button>
+        <button id="dlgNew" class="ghost">换一盘</button>
         <button id="dlgEdit" class="ghost">去改程序</button>
       </div>`;
-    $('#dlgAgain').addEventListener('click', () => startLevel(levelIdx));
+    $('#dlgSame').addEventListener('click', () => startLevel(levelIdx, { seed: S.seed }));
+    $('#dlgNew').addEventListener('click', () => startLevel(levelIdx));
     $('#dlgEdit').addEventListener('click', () => {
       hideOverlay();
       modalOpen = false;
       $('#levelTip').innerHTML = tipHTML('时间到。改完程序，点「重开本盘」或「换一盘」再来一班。');
-      toast('改完程序，点「重开本盘」或「换一盘」再来一班', 3600);
+      toast('改完程序，点左下角「重开本盘」——同一块棋盘，直接比两套程序', 3800);
     });
     $('#overlay').classList.remove('hidden');
   }
@@ -420,7 +500,7 @@ window.Game = (function () {
           <button id="dlgRetry" class="ghost">重开本盘</button>
         </div>`;
       $('#dlgNext').addEventListener('click', () => {
-        if (isLast) { hideOverlay(); modalOpen = false; toast('全部关卡走完了 · 去无尽果园继续打', 3000); }
+        if (isLast) { hideOverlay(); modalOpen = false; toast('全部关卡走完了 · 去三分钟果园继续打', 3000); }
         else startLevel(levelIdx + 1);
       });
       $('#dlgRetry').addEventListener('click', () => startLevel(levelIdx, { seed: S.seed }));
@@ -470,7 +550,7 @@ window.Game = (function () {
       <h2>这不是普通三消<span class="sub2">右边不是代码编辑器，是一张会执行的规则表</span></h2>
       <p>左边照常玩。右边四条规则从上往下检查，<b>第一条满足的生效，后面的直接跳过</b>——这就是 if / else。</p>
       <p class="fine">不同触发时机是分开检查的：<b>「每步开始」的规则不会挡住「玩家消除」的规则</b>，它们各算各的。</p>
-      <p class="fine">第 5 个标签是<b>无尽果园</b>：3 分钟起步，消除会续命；时间归零才收工。</p>
+      <p class="fine">第 5 个标签是<b>三分钟果园</b>：固定 3 分钟，时间不会变多。比的是这段时间里消掉多少格、拿多少分；同一块棋盘换套程序，哪套策略更强直接对比。</p>
       <div class="help-demo">
         <div><span class="h">①</span> 当玩家消除 且 连数≥5 <span class="a">→ 彩虹球</span></div>
         <div><span class="h">②</span> 当玩家消除 且 形状=折角 <span class="a">→ 炸弹</span></div>
@@ -760,15 +840,15 @@ window.Game = (function () {
 
     const gain = S.score - before.score;
     const stepNo = S.movesTotal - S.moves;
-    const timeLine = meta && meta.timeBonus > 0
-      ? `<div class="log-time">⏱ 续命 <b>+${meta.timeBonus.toFixed(1)}s</b><span>${esc(meta.timeDetail || '')}</span></div>`
+    const statsLine = meta && meta.cleared > 0
+      ? `<div class="log-clear">🧹 消除 <b>${meta.cleared} 格</b>${meta.detail ? `<span>${esc(meta.detail)}</span>` : ''}</div>`
       : '';
     const html = `<div class="log-move">
       <div class="log-title">
         <span>第 ${stepNo} 步</span>
         <span><span class="gain">+${gain}</span>${maxChain > 1 ? ` <span class="chain">连消 ×${maxChain}</span>` : ''}</span>
       </div>
-      ${timeLine}
+      ${statsLine}
       ${secs.join('')}
     </div>`;
 
@@ -782,7 +862,7 @@ window.Game = (function () {
 
   function clearLog() {
     const msg = S && S.level.endless
-      ? '走一步。这里会逐条告诉你：<br>哪条规则触发了，以及这一手续了几秒。'
+      ? '走一步。这里会逐条告诉你：<br>哪条规则触发了，这一手消掉多少格。'
       : '走一步。这里会逐条告诉你：<br>哪条规则触发了，哪条没通过、实际值是多少。';
     $('#log').innerHTML = `<div class="log-empty">${msg}</div>`;
   }
@@ -819,7 +899,7 @@ window.Game = (function () {
   function onDown(ev) {
     SFX.unlock();
     if (busy || modalOpen || !S) return;
-    if (endless && endless.over) { toast('时间到 · 点「重开本盘」或「换一盘」再来一班', 2200); return; }
+    if (endless && endless.over) { toast('时间到 · 点「同盘重打」或「换一盘」再来一班', 2200); return; }
     if (S.moves <= 0) { toast('没有步数了 · 改程序后点「重开本盘」', 2200); return; }
     const i = cellAt(ev);
     if (i < 0) return;
@@ -897,6 +977,7 @@ window.Game = (function () {
     const before = { score: S.score, moves: S.moves, collected: S.collected.slice(), ice: M3P.iceLeft(S) };
     liveScore = before.score;
     liveCollected = before.collected.slice();
+    liveCleared = endless ? endless.cleared : 0;
 
     let res;
     try {
@@ -916,27 +997,35 @@ window.Game = (function () {
     }
 
     startEndlessClock();
-    drawHud(liveScore, liveCollected);
+    drawHud(liveScore, liveCollected, liveCleared);
     await View.play(res.steps, {
       onClear(st) {
         liveScore += st.points;
+        liveCleared += st.cells.length;
         for (const c of st.cells) if (c.color != null) liveCollected[c.color]++;
-        drawHud(liveScore, liveCollected);
+        drawHud(liveScore, liveCollected, liveCleared);
       },
       onRuleFire(st) {
         flashRule(st.idx);
         if (st.action === 'bonus') {
           liveScore += M3P.BONUS_AMT;
-          drawHud(liveScore, liveCollected);
+          drawHud(liveScore, liveCollected, liveCleared);
         }
       },
     });
 
-    const bonus = endless && !endless.over ? grantEndlessBonus(res.steps) : null;
+    const st = endless && !endless.over ? M3P.endlessStats(res.steps) : null;
+    if (st) {
+      endless.cleared += st.cleared;
+      endless.groups += st.groups;
+      endless.specials += st.specials;
+      endless.ice += st.ice;
+    }
     liveScore = S.score;
     liveCollected = S.collected.slice();
+    liveCleared = endless ? endless.cleared : 0;
     drawHud();
-    addLog(before, res.steps, bonus ? { timeBonus: bonus.granted, timeDetail: bonusDetail(bonus) } : null);
+    addLog(before, res.steps, st ? { cleared: st.cleared, detail: clearDetail(st) } : null);
     busy = false;
     await wait(60);
     checkEnd();

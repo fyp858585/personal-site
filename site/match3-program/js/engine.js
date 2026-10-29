@@ -23,18 +23,20 @@
   const BONUS_AMT = 150;
   const SPAWN_SCORE = 20;
 
-  // 无尽模式：3 分钟起步，靠操作把时间打回来，最多囤到 5 分钟。
-  // 计时器本身在 app 层（需要暂停 / 页面隐藏），这里只负责
-  //「这一手该续多少秒」的纯逻辑，方便单测和调数值。
+  // 三分钟无尽：固定 3 分钟，时间到就收工，消除不会把时间打回来。
+  // 比的是同一段时间里消掉多少、谁的程序配得更好。
+  // 计时器本身在 app 层（需要暂停 / 页面隐藏），这里只放配置、
+  //「这一手消了多少」的纯统计和成绩评级，方便单测和调数值。
   const ENDLESS = Object.freeze({
     base: 180,
-    cap: 300,
     warn: 20,
-    perTile: 0.12,
-    perGroup: 0.35,
-    perChain: 0.6,
-    perSpecial: 1.0,
-    perIce: 0.5,
+    grades: Object.freeze([
+      Object.freeze({ min: 25000, grade: 'S', label: '果园大师' }),
+      Object.freeze({ min: 15000, grade: 'A', label: '老师傅' }),
+      Object.freeze({ min: 8000, grade: 'B', label: '稳住节奏' }),
+      Object.freeze({ min: 3000, grade: 'C', label: '刚上手' }),
+      Object.freeze({ min: 0, grade: 'D', label: '先跑一班' }),
+    ]),
   });
 
   const COLORS = ['#ff6b5b', '#ffc93c', '#5fd97a', '#4aa8ff', '#b07cff'];
@@ -199,13 +201,13 @@
       rec: null,
     },
     {
-      id: 5, name: '无尽果园', tag: '3 分钟续命',
+      id: 5, name: '三分钟果园', tag: '3 分钟计分',
       moves: 99999,
       goals: [],
       ice: null,
       sandbox: true,
       endless: true,
-      tip: '3 分钟起步，消除能把时间打回来。四连、连消、特殊棋续得更多；归零才收工。',
+      tip: '固定 3 分钟，时间不会变多。比的是这段时间里消掉多少格、拿多少分——改程序、重开同一块棋盘，哪套策略更强一比就知道。',
       rec: null,
     },
   ];
@@ -1086,11 +1088,11 @@
   }
 
   /**
-   * 无尽模式：把一手结算的步骤流折算成「续命秒数」。
-   * 只看玩家真实消掉的东西，不看规则加分，避免“刷分规则”同时刷时间。
-   * 返回值保留明细，日志里可以解释这 2.4 秒是怎么来的。
+   * 三分钟无尽：统计这一手真实消掉了多少。
+   * 只看玩家消掉的东西，不看规则加分——「消得多」和「分高」分开记，
+   * 结算时两个数都给，方便比较不同的程序。
    */
-  function endlessBonus(steps) {
+  function endlessStats(steps) {
     let cleared = 0, groups = 0, specials = 0, ice = 0, chain = 0;
     for (const st of steps || []) {
       if (st.t === 'match') {
@@ -1104,15 +1106,13 @@
         ice += (st.cells || []).length;
       }
     }
-    const raw = cleared * ENDLESS.perTile
-      + groups * ENDLESS.perGroup
-      + Math.max(0, chain - 1) * ENDLESS.perChain
-      + specials * ENDLESS.perSpecial
-      + ice * ENDLESS.perIce;
-    return {
-      seconds: Math.round(raw * 10) / 10,
-      cleared, groups, specials, ice, chain,
-    };
+    return { cleared, groups, specials, ice, chain };
+  }
+
+  // 成绩评级：时间固定 3 分钟，等级高低就是这一班的水平
+  function endlessGrade(score) {
+    for (const g of ENDLESS.grades) if (score >= g.min) return g;
+    return ENDLESS.grades[ENDLESS.grades.length - 1];
   }
 
   // ============================================================
@@ -1131,7 +1131,7 @@
     resolveMove, resolveTap, hasAnyMove, findHint, shuffle, settle,
     goalProgress, isWin, isLose, starsFor, goalText, iceLeft, iceCells,
     cloneGame, botMove, botCandidates, simulateLevel,
-    endlessBonus,
+    endlessStats, endlessGrade,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

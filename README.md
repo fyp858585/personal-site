@@ -40,7 +40,7 @@ open http://localhost:8080
 | 路径 | 内容 |
 | --- | --- |
 | [`/match3/`](site/match3/) | 果园消消乐 · 基础款：8 关、关卡地图、星星存档 |
-| [`/match3-program/`](site/match3-program/) | 果园工坊 · 编程三消：可编辑规则表 + 执行日志 + 4 关 + 3 分钟无尽果园 |
+| [`/match3-program/`](site/match3-program/) | 果园工坊 · 编程三消：可编辑规则表 + 执行日志 + 4 关 + 固定 3 分钟的三分钟果园（比分 + 策略榜） |
 
 > Demo 不在首页导航里，按路径直接访问。
 

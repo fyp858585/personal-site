@@ -397,11 +397,12 @@
 }
 
 /* ============================================================
-   无尽果园：3 分钟班次 / 续命 / 结算
+   三分钟果园：固定 3 分钟 / 比消除 / 策略榜
    ============================================================ */
 .lv-tab.endless .no {
   background: linear-gradient(180deg, #ff9d6b, #e9502e);
-  font-size: 14px;
+  font-size: 12px;
+  letter-spacing: -0.5px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 0 10px rgba(233,80,46,.35);
 }
 .lv-tab.endless.active {
@@ -420,72 +421,84 @@
   border-radius: inherit; background: linear-gradient(90deg, #ffd166, #f08a1e);
   transition: width .2s linear;
 }
-.hud-stat.moves.endless b { color: #d85a18; }
+.hud-stat.moves.endless b { color: #d85a18; font-variant-numeric: tabular-nums; }
 .hud-stat.moves.endless.low { animation: clockLow 1s ease-in-out infinite; }
 .hud-stat.moves.endless.low b { color: var(--bad); }
 @keyframes clockLow {
   50% { box-shadow: 0 3px 0 rgba(150,105,40,.24), 0 0 0 4px rgba(216,86,60,.16); }
 }
-.hud-stat.moves.gain { animation: clockGain .6s ease-out; }
-@keyframes clockGain {
-  0% { transform: translateY(0) scale(1); }
-  25% { transform: translateY(-3px) scale(1.06); background: #e7ffd9; }
-  100% { transform: translateY(0) scale(1); }
-}
-.time-gain {
-  position: absolute; left: 50%; top: -8px; z-index: 12;
-  transform: translate(-50%, -100%);
-  font-style: normal; font-size: 13px; font-weight: 900; color: #2f9e45;
-  text-shadow: 0 1px 0 #fff, 0 2px 6px rgba(40,100,30,.22);
-  white-space: nowrap; opacity: 0; pointer-events: none;
-}
-.time-gain.show { animation: timeGainPop .95s cubic-bezier(.2, 1.3, .4, 1) forwards; }
-@keyframes timeGainPop {
-  0% { opacity: 0; transform: translate(-50%, -70%) scale(.7); }
-  20% { opacity: 1; transform: translate(-50%, -110%) scale(1.08); }
-  70% { opacity: 1; transform: translate(-50%, -145%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -185%) scale(.95); }
-}
 
 .goal.endless { background: rgba(255,255,255,.92); }
 .goal.endless .dot {
   background: linear-gradient(160deg, #ffbd5c, #f08a1e);
-  color: #fff; font-size: 16px; font-weight: 900;
+  color: #fff; font-size: 15px; font-weight: 900;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 0 0 2px rgba(255,255,255,.5);
 }
 .goal.endless .gtext { min-width: 104px; }
 .goal.endless .gline { gap: 3px; font-size: 11.5px; }
-.goal.endless .gline i { font-size: 10px; }
+.goal.endless .gline i { font-size: 9.5px; }
 .goal.endless .gline b { color: #c96c10; }
+.goal.endless .gsub { margin-top: 1px; font-size: 9.5px; font-weight: 700; color: #96703c; }
+.goal.endless .gsub b { color: #b8610a; }
+.goal.endless .gbar { margin-top: 3px; }
 .goal.endless .gbar i { background: linear-gradient(90deg, #ffd166, #f08a1e); }
 .goal.endless.record { background: #e9ffdc; }
 .goal.endless.record .gline b { color: #2f9e45; }
+.goal.endless.record .gline i { color: #2f9e45; font-weight: 900; }
 .goal.endless.record .gbar i { background: linear-gradient(90deg, #7ee787, #2f9e45); }
 
 .dialog.endless h2 { color: #e07a10; }
 .dialog.endless .scoreline { margin-top: 12px; }
 .dialog.endless .scoreline b { color: #c96c10; font-size: 24px; }
+.dialog.endless .grade {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 8px;
+  font-size: 12px; font-weight: 900; color: #fff; vertical-align: 2px;
+  background: linear-gradient(160deg, #b8b0a4, #837a6c);
+}
+.dialog.endless .grade.gS { background: linear-gradient(160deg, #ffd166, #e8890c); box-shadow: 0 0 0 2px rgba(255,209,102,.35); }
+.dialog.endless .grade.gA { background: linear-gradient(160deg, #7ee787, #2f9e45); }
+.dialog.endless .grade.gB { background: linear-gradient(160deg, #6fc3f2, #2b7fc4); }
+.dialog.endless .grade.gC { background: linear-gradient(160deg, #c084fc, #7c4dcc); }
+.dialog.endless .gradeline { margin-top: 3px; font-size: 10.5px; font-weight: 800; color: #8a6a44; }
 .endless-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
   margin: 12px 0 4px;
 }
 .endless-stats div {
-  background: rgba(255,255,255,.55); border-radius: 11px; padding: 7px 3px;
+  background: rgba(255,255,255,.55); border-radius: 11px; padding: 7px 2px;
 }
-.endless-stats b { display: block; font-size: 18px; line-height: 1.2; color: #c96c10; font-variant-numeric: tabular-nums; }
-.endless-stats span { display: block; margin-top: 2px; font-size: 9.5px; color: var(--ink-2); font-weight: 700; }
+.endless-stats b { display: block; font-size: 17px; line-height: 1.2; color: #c96c10; font-variant-numeric: tabular-nums; }
+.endless-stats span { display: block; margin-top: 2px; font-size: 9px; color: var(--ink-2); font-weight: 700; }
 .dialog .tip.newbest { color: #2f9e45; font-weight: 900; }
 
-.log-time {
-  display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap;
-  margin-top: 2px; color: #9fe7b0; font-weight: 700;
+.progboard {
+  margin-top: 7px; padding: 7px 9px 6px; border-radius: 11px;
+  background: rgba(255,255,255,.5); text-align: left;
 }
-.log-time b { color: #6ee7a0; font-size: 12px; }
-.log-time span { color: #5f7f6b; font-size: 9.5px; }
+.pb-title { font-size: 9.5px; font-weight: 900; color: #a07a4a; letter-spacing: .03em; }
+.pb-row {
+  display: flex; align-items: baseline; gap: 6px; margin-top: 4px;
+  font-size: 10px; font-weight: 700; color: #6b5636;
+}
+.pb-row i { flex: none; width: 13px; font-style: normal; font-weight: 900; color: #c96c10; }
+.pb-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-row b { flex: none; font-variant-numeric: tabular-nums; color: #c96c10; }
+.pb-row .cl { flex: none; font-size: 8.5px; color: #9a7a4a; font-variant-numeric: tabular-nums; }
+.pb-row.cur { background: rgba(255,209,102,.4); border-radius: 6px; padding: 2px 4px; margin: 2px -4px 0; }
+
+.log-clear {
+  display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap;
+  margin-top: 2px; color: #ffe0a3; font-weight: 700;
+}
+.log-clear b { color: #ffd166; font-size: 12px; }
+.log-clear span { color: #8f98b8; font-size: 9.5px; }
 
 @media (max-width: 520px) {
-  .goal.endless .gtext { min-width: 72px; }
+  .goal.endless .gtext { min-width: 78px; }
   .goal.endless .gline { font-size: 10.5px; }
-  .endless-stats b { font-size: 16px; }
+  .goal.endless .gsub { font-size: 9px; }
+  .endless-stats b { font-size: 15px; }
+  .endless-stats span { font-size: 8.5px; }
   .hud-stat.moves.endless b { font-size: 18px; }
+  .pb-row { font-size: 9.5px; }
 }
