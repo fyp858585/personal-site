@@ -6,3 +6,6 @@ __pycache__/
 # Docker volumes / runtime
 .env.local
 docker-compose.override.yml
+
+# macOS
+.DS_Store

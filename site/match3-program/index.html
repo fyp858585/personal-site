@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6fc3f2">
+<title>果园工坊 · 编程三消</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23fff3d6'/%3E%3Ccircle cx='32' cy='33' r='18' fill='%23ff6b5b'/%3E%3Cpath d='M67 12 l6.5 13.5 15 2.2 -10.9 10.6 2.6 15 -13.2 -7 -13.2 7 2.6 -15 -10.9 -10.6 15 -2.2z' fill='%23ffc93c'/%3E%3Crect x='18' y='60' width='26' height='26' rx='8' fill='%235fd97a'/%3E%3Cpath d='M68 57 l19 16 -19 16 -19 -16z' fill='%23b07cff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== 背景 ===== -->
+<div class="scene" aria-hidden="true">
+  <div class="sun"></div>
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="cloud c3"></div>
+  <div class="hill h2"></div>
+  <div class="hill h1"></div>
+</div>
+
+<main class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">🍊</span>
+      <div class="brand-tx">
+        <h1>果园工坊</h1>
+        <p>编程三消 <i>·</i> 初版</p>
+      </div>
+    </div>
+    <nav id="levelTabs" class="level-tabs" aria-label="关卡"></nav>
+    <div class="top-actions">
+      <button id="btnSound" class="ibtn" title="音效开关">🔊</button>
+      <button id="btnHelp" class="ibtn" title="怎么玩">?</button>
+    </div>
+  </header>
+
+  <div class="stage">
+
+    <!-- ================= 左：盘面 ================= -->
+    <section class="play-col">
+      <div class="hud">
+        <div class="hud-stat moves" id="movesBox"><span>步数</span><b id="hudMoves">22</b></div>
+        <div class="hud-stat score"><span>分数</span><b id="hudScore">0</b></div>
+        <div id="goalbar" class="goalbar"></div>
+        <div class="hud-tools">
+          <button id="btnHint" class="tool" title="提示">💡</button>
+        </div>
+      </div>
+
+      <div class="board-wrap" id="boardWrap">
+        <div id="board" class="board">
+          <div id="cells" class="cells"></div>
+          <div id="tiles" class="tiles"></div>
+          <div id="ice" class="ice-layer"></div>
+          <div id="fx" class="fx"></div>
+        </div>
+      </div>
+
+      <div class="play-foot">
+        <p id="levelTip" class="level-tip"></p>
+        <div class="board-actions">
+          <button id="btnRestart" class="btn soft">↻ 重开本盘</button>
+          <button id="btnNew" class="btn soft">🎲 换一盘</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 右：程序 ================= -->
+    <aside class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>你的程序</h2>
+          <p>从上到下 · 第一条命中即止</p>
+        </div>
+        <button id="btnFactory" class="mini">恢复出厂</button>
+      </div>
+
+      <div id="rules" class="rules"></div>
+
+      <div class="panel-note">
+        改完，下一步生效。想对比两套程序，就用「重开本盘」——棋盘一模一样。
+      </div>
+
+      <div class="log-head">
+        <h3>执行记录</h3>
+        <button id="btnClearLog" class="mini ghost">清空</button>
+      </div>
+      <div id="log" class="log">
+        <div class="log-empty">走一步。这里会逐条告诉你：<br>哪条规则触发了，哪条没通过、实际值是多少。</div>
+      </div>
+
+      <div id="recRow" class="rec-row"></div>
+    </aside>
+
+  </div>
+</main>
+
+<div id="overlay" class="overlay hidden"><div id="dialog" class="dialog"></div></div>
+<div id="toast" class="toast"></div>
+
+<!-- ============================================================
+     棋子美术：沿用基础款的 5 个形状宝石（颜色 + 轮廓双通道）
+     ============================================================ -->
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="g0" cx="34%" cy="26%" r="80%">
+      <stop offset="0" stop-color="#ffb3a4"/><stop offset="52%" stop-color="#ff7160"/><stop offset="100%" stop-color="#d93b2b"/>
+    </radialGradient>
+    <radialGradient id="g1" cx="34%" cy="26%" r="80%">
+      <stop offset="0" stop-color="#fff0a8"/><stop offset="52%" stop-color="#ffce3d"/><stop offset="100%" stop-color="#e09a08"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="34%" cy="26%" r="80%">
+      <stop offset="0" stop-color="#b6f5b8"/><stop offset="52%" stop-color="#63d977"/><stop offset="100%" stop-color="#2f9e45"/>
+    </radialGradient>
+    <radialGradient id="g3" cx="34%" cy="26%" r="80%">
+      <stop offset="0" stop-color="#b3dcff"/><stop offset="52%" stop-color="#5aabff"/><stop offset="100%" stop-color="#2a6fd0"/>
+    </radialGradient>
+    <radialGradient id="g4" cx="34%" cy="26%" r="80%">
+      <stop offset="0" stop-color="#e2c6ff"/><stop offset="52%" stop-color="#b481ff"/><stop offset="100%" stop-color="#7a3fd0"/>
+    </radialGradient>
+    <radialGradient id="shade" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#3a2410" stop-opacity=".28"/>
+      <stop offset="65%" stop-color="#3a2410" stop-opacity=".12"/>
+      <stop offset="100%" stop-color="#3a2410" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".55"/>
+      <stop offset=".42" stop-color="#fff" stop-opacity=".04"/>
+      <stop offset=".72" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".2"/>
+    </linearGradient>
+  </defs>
+
+  <symbol id="a0" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="89" rx="27" ry="7" fill="url(#shade)"/>
+    <circle cx="50" cy="51" r="33" fill="url(#g0)" stroke="#c9382a" stroke-width="6"/>
+    <circle cx="50" cy="51" r="33" fill="url(#sheen)"/>
+    <ellipse cx="36" cy="36" rx="11" ry="6.4" fill="#fff" opacity=".62" transform="rotate(-30 36 36)"/>
+    <circle cx="64" cy="37" r="3" fill="#fff" opacity=".8"/>
+  </symbol>
+
+  <symbol id="a1" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="89" rx="27" ry="7" fill="url(#shade)"/>
+    <polygon points="50,14 59.7,38.65 86.14,40.26 65.69,57.1 72.34,82.74 50,68.5 27.66,82.74 34.31,57.1 13.86,40.26 40.3,38.65" fill="url(#g1)" stroke="#d08c05" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="50,14 59.7,38.65 86.14,40.26 65.69,57.1 72.34,82.74 50,68.5 27.66,82.74 34.31,57.1 13.86,40.26 40.3,38.65" fill="url(#sheen)"/>
+    <ellipse cx="50" cy="27.5" rx="4" ry="7" fill="#fff" opacity=".66"/>
+    <circle cx="59" cy="46" r="2.6" fill="#fff" opacity=".75"/>
+  </symbol>
+
+  <symbol id="a2" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="89" rx="27" ry="7" fill="url(#shade)"/>
+    <rect x="17" y="18" width="66" height="66" rx="18" fill="url(#g2)" stroke="#2f9445" stroke-width="6"/>
+    <rect x="17" y="18" width="66" height="66" rx="18" fill="url(#sheen)"/>
+    <ellipse cx="35" cy="34" rx="10" ry="5.6" fill="#fff" opacity=".6" transform="rotate(-32 35 34)"/>
+    <circle cx="64" cy="36" r="2.8" fill="#fff" opacity=".78"/>
+  </symbol>
+
+  <symbol id="a3" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="89" rx="27" ry="7" fill="url(#shade)"/>
+    <path d="M50 14 L84 80 H16 Z" fill="url(#g3)" stroke="#2a6bc4" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M50 14 L84 80 H16 Z" fill="url(#sheen)"/>
+    <ellipse cx="50" cy="35" rx="5.6" ry="5" fill="#fff" opacity=".62"/>
+    <circle cx="60" cy="52" r="2.4" fill="#fff" opacity=".7"/>
+  </symbol>
+
+  <symbol id="a4" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="89" rx="27" ry="7" fill="url(#shade)"/>
+    <polygon points="50,12 85,50 50,88 15,50" fill="url(#g4)" stroke="#6d33c0" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="50,12 85,50 50,88 15,50" fill="url(#sheen)"/>
+    <ellipse cx="37" cy="37" rx="8" ry="4.6" fill="#fff" opacity=".62" transform="rotate(-40 37 37)"/>
+    <circle cx="62" cy="40" r="2.6" fill="#fff" opacity=".76"/>
+  </symbol>
+</svg>
+
+<script src="js/engine.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/view.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
